@@ -1,0 +1,65 @@
+# ==========================
+# Environment
+# ==========================
+.env
+.env.local
+.env.*.local
+
+# ==========================
+# Backend (Laravel)
+# ==========================
+backend/vendor/
+backend/.env
+backend/storage/*.key
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/bootstrap/cache/*
+backend/.phpunit.result.cache
+backend/.php-cs-fixer.cache
+
+# ==========================
+# Frontend (Next.js)
+# ==========================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.*.local
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# ==========================
+# Docker
+# ==========================
+docker/volumes/
+
+# ==========================
+# IDE
+# ==========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Terraform
+# ==========================
+terraform/**/.terraform/
+terraform/**/*.tfstate
+terraform/**/*.tfstate.backup
+terraform/**/*.tfvars
+!terraform/**/*.tfvars.example
+terraform/**/.terraform.lock.hcl
+
+# ==========================
+# OS
+# ==========================
+*.log
+*.pid
+*.seed

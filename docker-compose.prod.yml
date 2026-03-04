@@ -1,0 +1,97 @@
+# ============================================
+# Docker Compose - Production Override
+# ============================================
+# Este arquivo SOBRESCREVE o docker-compose.yml para producao.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Diferencas de producao:
+#   - Builds usam target "production" (imagens otimizadas)
+#   - Sem volumes de codigo (codigo esta DENTRO da imagem)
+#   - Sem portas expostas desnecessarias
+#   - Sem ferramentas de debug (Xdebug)
+#   - Resources limits (CPU/memoria)
+#   - Restart always (em vez de unless-stopped)
+
+services:
+  nginx:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+  backend:
+    build:
+      target: production
+    # Sem portas expostas - acesso apenas via Nginx
+    ports: []
+    # Sem volumes de codigo - tudo esta na imagem
+    volumes:
+      - backend-storage:/var/www/html/storage
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      # Desabilitar Xdebug
+      XDEBUG_MODE: "off"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+      # Em producao, podemos ter multiplas replicas
+      # (em K8s isso e feito via Deployment replicas)
+      replicas: 1
+
+  frontend:
+    build:
+      target: production
+    ports: []
+    # Sem volumes - codigo na imagem
+    volumes: []
+    environment:
+      NODE_ENV: production
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  postgres:
+    # Sem porta exposta para o host
+    ports: []
+    environment:
+      # Em producao, use secrets do Docker/K8s em vez de env vars
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+
+  redis:
+    ports: []
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  kafka:
+    ports: []
+    environment:
+      # Desabilitar auto-create em producao
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M

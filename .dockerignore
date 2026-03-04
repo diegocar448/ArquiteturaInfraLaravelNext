@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+
+# Documentation
+README.md
+docs/
+
+# IDE
+.idea/
+.vscode/
+
+# Terraform
+terraform/
+
+# Kubernetes
+k8s/
+
+# CI/CD
+.github/
+
+# Backend
+backend/vendor/
+backend/node_modules/
+backend/storage/logs/*
+backend/.phpunit.result.cache
+backend/tests/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+
+# Docker build artifacts (BuildKit temp files)
+sha256:*
+extracting
+reading
+resolve
+transferring
+CANCELED
+ERROR
+=
+]
