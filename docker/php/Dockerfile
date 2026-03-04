@@ -115,8 +115,9 @@ RUN apk add --no-cache git
 # O codigo sera montado via volume no docker-compose
 # Nao copiamos nada aqui - isso permite hot-reload
 
-# Manter como root em dev para facilitar (volumes compartilhados)
-USER orderly
+# Em dev, rodamos como root porque o volume montado
+# (./backend:/var/www/html) herda as permissoes do host.
+# O usuario nao-root e aplicado apenas em producao.
 
 EXPOSE 9000
 
