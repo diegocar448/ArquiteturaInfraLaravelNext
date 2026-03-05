@@ -2201,6 +2201,14 @@ cp -r /tmp/laravel-skeleton/tests /var/www/html/
 cp /tmp/laravel-skeleton/.env.example /var/www/html/
 cp /tmp/laravel-skeleton/phpunit.xml /var/www/html/
 
+# IMPORTANTE: sobrescrever o public/index.php placeholder com o real do Laravel
+# Na Fase 1 criamos um index.php simples que retorna JSON fixo.
+# Agora precisamos do index.php real que carrega o bootstrap do Laravel.
+cp -f /tmp/laravel-skeleton/public/index.php /var/www/html/public/index.php
+
+# Copiar .env.example para .env
+cp /var/www/html/.env.example /var/www/html/.env
+
 # 3. Limpar temporario
 rm -rf /tmp/laravel-skeleton
 
@@ -2232,21 +2240,9 @@ Os arquivos do Laravel vao aparecer na pasta `backend/` do seu computador, mas `
 
 ---
 
-## Passo 2.2 - Configurar .env do Laravel
+## Passo 2.2 - Testar conexao com PostgreSQL e Redis
 
-O docker-compose.yml ja passa as variaveis de ambiente para o container. Mas precisamos de um `.env` para comandos `artisan` e para o Laravel carregar configuracoes.
-
-```bash
-# Copiar o .env.example para .env (dentro do container)
-make backend-shell
-
-# Dentro do container:
-cp .env.example .env
-
-# Configurar as variaveis (o docker-compose ja sobrescreve a maioria)
-php artisan key:generate
-exit
-```
+O `.env` ja foi criado no passo anterior. O docker-compose.yml ja passa as variaveis de ambiente (DB_HOST, REDIS_HOST, etc.) para o container, sobrescrevendo o `.env`.
 
 Agora vamos testar a conexao com o PostgreSQL:
 
@@ -2286,34 +2282,65 @@ docker compose exec backend php artisan tinker
 
 ---
 
-## Passo 2.3 - Configurar CORS
+## Passo 2.3 - Configurar CORS e rotas API
 
 O CORS (Cross-Origin Resource Sharing) permite que o frontend (`localhost:3000`) faca requests para o backend (`localhost/api`).
 
-Edite o arquivo `backend/config/cors.php`:
+No Laravel 12, nao existe mais `config/cors.php`. O CORS e as rotas API sao configurados no `bootstrap/app.php`.
+
+Primeiro, crie o arquivo de rotas API. Crie `backend/routes/api.php`:
 
 ```php
 <?php
 
-return [
-    'paths' => ['api/*'],
-    'allowed_methods' => ['*'],
-    'allowed_origins' => [
-        env('FRONTEND_URL', 'http://localhost:3000'),
-        'http://localhost',
-    ],
-    'allowed_origins_patterns' => [],
-    'allowed_headers' => ['*'],
-    'exposed_headers' => [],
-    'max_age' => 0,
-    'supports_credentials' => true,
-];
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Orderly API v1',
+        'version' => '1.0.0',
+    ]);
+});
 ```
 
-**Por que `supports_credentials: true`?**
-Porque vamos enviar o JWT token via cookie httpOnly (mais seguro que localStorage). Cookies cross-origin precisam de `credentials: 'include'` no fetch e `supports_credentials: true` no CORS.
+Agora edite `backend/bootstrap/app.php` para registrar as rotas API e configurar o CORS:
 
-**Nota:** Na pratica, quando o frontend acessa `http://localhost/api` via Nginx, nao e cross-origin (mesma origem). Mas durante SSR, o Next.js chama o backend internamente pela rede Docker, e ai o CORS e necessario.
+```php
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        //
+    })->create();
+```
+
+**O que mudou no Laravel 12?**
+- Sem `config/cors.php` — o middleware `HandleCors` e adicionado automaticamente
+- Sem `routes/api.php` por padrao — precisa criar e registrar no `bootstrap/app.php`
+- A linha `api: __DIR__.'/../routes/api.php'` registra as rotas com prefixo `/api`
+- O `trustProxies(at: '*')` e necessario porque o Nginx faz proxy para o PHP-FPM
+
+Teste:
+```bash
+curl http://localhost/api
+# Esperado: {"status":"ok","message":"Orderly API v1","version":"1.0.0"}
+```
+
+**Nota:** Na pratica, quando o frontend acessa `http://localhost/api` via Nginx, nao e cross-origin (mesma origem). Mas durante SSR, o Next.js chama o backend internamente pela rede Docker, e ai o CORS pode ser necessario.
 
 ---
 
