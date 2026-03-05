@@ -32,6 +32,8 @@ RUN apk add --no-cache \
     curl \
     # Supervisor para gerenciar processos
     supervisor \
+    # Kafka (librdkafka para ext-rdkafka)
+    librdkafka-dev \
     && docker-php-ext-configure gd \
         --with-freetype \
         --with-jpeg \
@@ -49,8 +51,8 @@ RUN apk add --no-cache \
         pcntl \
     # Instalar Redis via PECL
     && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && pecl install redis rdkafka \
+    && docker-php-ext-enable redis rdkafka \
     && apk del .build-deps \
     # Limpar caches
     && rm -rf /var/cache/apk/* /tmp/*
