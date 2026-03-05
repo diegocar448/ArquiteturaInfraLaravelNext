@@ -2344,6 +2344,21 @@ curl http://localhost/api
 
 ---
 
+## Corrigir permissoes dos arquivos do backend
+
+Antes de continuar, precisamos corrigir as permissoes dos arquivos do backend. Como os arquivos foram criados dentro do container Docker (que roda como root), eles ficam com owner `root` no host, impedindo a edicao no VSCode ou outro editor.
+
+```bash
+# Corrigir permissoes via container Docker (nao precisa de sudo)
+docker compose exec backend chown -R 1000:1000 /var/www/html
+```
+
+> **Por que isso acontece?** Quando voce roda comandos como `composer install` ou `php artisan` dentro do container, os arquivos sao criados pelo usuario root do container. Como usamos bind mount (`./backend:/var/www/html`), esses arquivos aparecem no host com owner root. O comando acima muda o owner para UID 1000 (seu usuario WSL).
+
+> **Dica:** Sempre que rodar comandos dentro do container que criem ou modifiquem arquivos, rode o `chown` novamente para manter as permissoes corretas.
+
+---
+
 ## Passo 2.4 - Configurar JWT Auth (tymon/jwt-auth)
 
 JWT (JSON Web Token) e nosso metodo de autenticacao. Diferente do Sanctum (session-based), JWT e stateless e perfeito para APIs e microsservicos.
