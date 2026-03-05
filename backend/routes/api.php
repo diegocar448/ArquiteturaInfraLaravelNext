@@ -1,11 +1,16 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return response()->json([
-        'status' => 'ok',
-        'message' => 'Orderly API v1',
-        'version' => '1.0.0',
-    ]);
+Route::prefix('v1')->group(function () {
+    // Rotas publicas
+    Route::post('/auth/login', [AuthController::class, 'login']);
+
+    // Rotas protegidas (requer JWT)
+    Route::middleware('auth:api')->group(function () {
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::post('/auth/refresh', [AuthController::class, 'refresh']);
+        Route::get('/auth/me', [AuthController::class, 'me']);
+    });
 });
