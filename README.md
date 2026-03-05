@@ -2873,6 +2873,7 @@ Registre no `backend/database/seeders/DatabaseSeeder.php`:
 
 namespace Database\Seeders;
 
+use Database\Seeders\AdminUserSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -2895,8 +2896,11 @@ docker compose exec backend php artisan db:seed
 # Testar login via curl
 curl -X POST http://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
   -d '{"email":"admin@orderly.com","password":"password"}'
 ```
+
+> **Importante:** O header `-H "Accept: application/json"` e essencial em APIs Laravel. Sem ele, erros sao retornados como paginas HTML ao inves de JSON legivel.
 
 Resposta esperada:
 ```json
@@ -2911,7 +2915,8 @@ Teste a rota protegida:
 ```bash
 # Copie o access_token da resposta anterior
 curl http://localhost/api/v1/auth/me \
-  -H "Authorization: Bearer SEU_TOKEN_AQUI"
+  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
+  -H "Accept: application/json"
 ```
 
 Resposta esperada:
@@ -3623,13 +3628,15 @@ docker compose up -d --build
 # 1. Health check
 curl http://localhost/api/v1/auth/login -X POST \
   -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
   -d '{"email":"admin@orderly.com","password":"password"}'
 
 # Esperado: {"access_token":"eyJ...","token_type":"bearer","expires_in":3600}
 
 # 2. Rota protegida (substitua o token)
 curl http://localhost/api/v1/auth/me \
-  -H "Authorization: Bearer SEU_TOKEN"
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Accept: application/json"
 
 # Esperado: {"data":{"id":1,"name":"Admin Orderly",...}}
 ```
