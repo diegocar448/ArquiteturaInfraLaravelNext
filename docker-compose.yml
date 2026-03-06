@@ -115,6 +115,8 @@ services:
       # Watchpack polling para WSL2 (file watching)
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
+      # Next.js Server Components rodam DENTRO do container Docker para SSR
+      INTERNAL_API_URL: http://nginx:80/api
     depends_on:
       - backend
     networks:
