@@ -3005,9 +3005,7 @@ docker compose exec frontend sh
 npx shadcn@latest init
 
 # Selecione:
-# Style: New York
 # Base color: Zinc
-# CSS variables: yes
 ```
 
 O comando vai:
