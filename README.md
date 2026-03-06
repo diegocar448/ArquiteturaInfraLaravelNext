@@ -3041,6 +3041,19 @@ shadcn/ui e ideal para Next.js 15 porque funciona perfeitamente com Server Compo
 
 ---
 
+## Corrigir permissoes dos arquivos do frontend
+
+Assim como no backend, os arquivos criados dentro do container Docker ficam com owner `root`. Corrija antes de criar/editar arquivos do frontend:
+
+```bash
+# Corrigir permissoes via container Docker (nao precisa de sudo)
+docker compose exec frontend chown -R 1000:1000 /app
+```
+
+> **Dica:** Sempre que rodar `npm install` ou `npx shadcn` dentro do container, rode o `chown` novamente.
+
+---
+
 ## Passo 2.10 - Instalar dependencias do frontend
 
 ```bash
