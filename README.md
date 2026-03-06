@@ -27,6 +27,23 @@ Este README e um tutorial progressivo. Cada fase documenta exatamente o que foi 
   - [Passo 1.14 - Docker Compose (producao)](#passo-114---docker-compose-producao)
   - [Passo 1.15 - Makefile (automacao)](#passo-115---makefile-automacao)
   - [Passo 1.16 - Subindo o ambiente](#passo-116---subindo-o-ambiente)
+- [Fase 2 - Bootstrap Laravel 12 + Next.js 15 com shadcn/ui](#fase-2---bootstrap-laravel-12--nextjs-15-com-shadcnui)
+  - [Passo 2.1 - Instalar Laravel skeleton](#passo-21---instalar-laravel-skeleton)
+  - [Passo 2.2 - Testar conexao com PostgreSQL e Redis](#passo-22---testar-conexao-com-postgresql-e-redis)
+  - [Passo 2.3 - Configurar CORS e rotas API](#passo-23---configurar-cors-e-rotas-api)
+  - [Passo 2.4 - Configurar JWT Auth (tymon/jwt-auth)](#passo-24---configurar-jwt-auth-tymonjwt-auth)
+  - [Passo 2.5 - Clean Architecture - Padroes base](#passo-25---clean-architecture---padroes-base)
+  - [Passo 2.6 - Controller de autenticacao + rotas](#passo-26---controller-de-autenticacao--rotas)
+  - [Passo 2.7 - Seeder de admin e teste da API](#passo-27---seeder-de-admin-e-teste-da-api)
+  - [Passo 2.8 - Configurar Tailwind CSS v4](#passo-28---configurar-tailwind-css-v4)
+  - [Passo 2.9 - Inicializar shadcn/ui](#passo-29---inicializar-shadcnui)
+  - [Passo 2.10 - Instalar dependencias do frontend](#passo-210---instalar-dependencias-do-frontend)
+  - [Passo 2.11 - API Client](#passo-211---api-client)
+  - [Passo 2.12 - Auth Store (Zustand)](#passo-212---auth-store-zustand)
+  - [Passo 2.13 - Pagina de Login](#passo-213---pagina-de-login)
+  - [Passo 2.14 - Layout admin com sidebar](#passo-214---layout-admin-com-sidebar)
+  - [Passo 2.15 - Middleware de autenticacao (Next.js)](#passo-215---middleware-de-autenticacao-nextjs)
+  - [Passo 2.16 - Verificacao end-to-end](#passo-216---verificacao-end-to-end)
 
 ---
 
@@ -940,6 +957,14 @@ upstream frontend {
     server frontend:3000;
 }
 
+# --- Mapa para WebSocket condicional ---
+# So envia "upgrade" quando o cliente pede (WebSocket).
+# Requisicoes HTTP normais usam "" (vazio).
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      '';
+}
+
 # --- Main server block ---
 server {
     listen 80;
@@ -1017,9 +1042,9 @@ server {
         proxy_pass http://frontend;
         proxy_http_version 1.1;
 
-        # WebSocket support (para hot-reload em dev e real-time em prod)
+        # WebSocket condicional (so ativa quando o cliente pede upgrade)
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection $connection_upgrade;
 
         # Headers necessarios para o Next.js
         proxy_set_header Host $host;
@@ -1027,10 +1052,10 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
+        # Timeouts (longos para dev - Turbopack pode demorar na primeira compilacao)
+        proxy_connect_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
     }
 
     # --- Next.js static assets ---
@@ -1233,17 +1258,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Standalone output para producao (imagem Docker minima)
   output: "standalone",
-
-  // Rewrites para proxy da API em desenvolvimento
-  // Em producao, o Nginx faz esse roteamento
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://backend:9000"}/:path*`,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
@@ -1308,7 +1322,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="dark">
       <body>{children}</body>
     </html>
   );
@@ -1486,10 +1500,14 @@ services:
       - /app/node_modules
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost/api
+      # URL relativa - o browser usa a mesma origem (127.0.0.1 ou localhost)
+      # Evita problemas de IPv6 no WSL2
+      NEXT_PUBLIC_API_URL: /api
       # Watchpack polling para WSL2 (file watching)
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"
+      # Next.js Server Components rodam DENTRO do container Docker para SSR
+      INTERNAL_API_URL: http://nginx:80/api
     depends_on:
       - backend
     networks:
@@ -2086,6 +2104,20 @@ make help
 ```
 
 ### Troubleshooting
+
+**Pagina nao carrega no browser (loading infinito):**
+
+O Chrome no Windows resolve `localhost` para `::1` (IPv6), mas o Docker no WSL2 so escuta em IPv4. Solucao: use `127.0.0.1` ao inves de `localhost`:
+
+```
+# Ao inves de http://localhost/login use:
+http://127.0.0.1/login
+
+# Ao inves de http://localhost:3000/login use:
+http://127.0.0.1:3000/login
+```
+
+> **Dica:** Por isso o `NEXT_PUBLIC_API_URL` usa URL relativa (`/api`) no docker-compose — assim o browser faz o fetch usando a mesma origem que voce acessou (127.0.0.1).
 
 **Porta 80 ja em uso:**
 ```bash
@@ -2975,7 +3007,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className="dark">
       <body className="min-h-screen bg-background text-foreground antialiased">
         {children}
       </body>
@@ -3163,6 +3195,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { apiClient, ApiError } from "@/lib/api";
 
+// Sync token com cookie para o middleware (server-side) conseguir ler
+function setTokenCookie(token: string) {
+  document.cookie = `token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
+}
+
+function removeTokenCookie() {
+  document.cookie = "token=; path=/; max-age=0";
+}
+
 interface User {
   id: number;
   name: string;
@@ -3202,6 +3243,7 @@ export const useAuthStore = create<AuthState>()(
 
       setToken: (token: string) => {
         localStorage.setItem("token", token);
+        setTokenCookie(token);
         set({ token, isAuthenticated: true });
       },
 
@@ -3214,6 +3256,7 @@ export const useAuthStore = create<AuthState>()(
           });
 
           localStorage.setItem("token", response.access_token);
+          setTokenCookie(response.access_token);
           set({
             token: response.access_token,
             isAuthenticated: true,
@@ -3248,6 +3291,7 @@ export const useAuthStore = create<AuthState>()(
 
       clear: () => {
         localStorage.removeItem("token");
+        removeTokenCookie();
         set({ token: null, user: null, isAuthenticated: false });
       },
     }),
@@ -3258,6 +3302,8 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 ```
+
+> **Por que o cookie?** O middleware do Next.js roda no servidor (Edge Runtime) e nao tem acesso ao `localStorage`. Para que ele saiba se o usuario esta autenticado, sincronizamos o token JWT como cookie. O `localStorage` continua sendo a fonte primaria para o client-side.
 
 **Conceito - Zustand vs Redux:**
 - Zustand: ~1KB, zero boilerplate, hooks nativos
@@ -3654,7 +3700,7 @@ curl http://localhost/api/v1/auth/me \
 
 ### Testar frontend
 
-1. Acesse `http://localhost` no navegador
+1. Acesse `http://127.0.0.1` no navegador (use `127.0.0.1`, nao `localhost` - veja Troubleshooting)
 2. Deve redirecionar para `/login`
 3. Faca login com `admin@orderly.com` / `password`
 4. Deve redirecionar para `/dashboard` com sidebar

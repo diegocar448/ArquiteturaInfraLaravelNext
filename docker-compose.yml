@@ -111,7 +111,9 @@ services:
       - /app/node_modules
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost/api
+      # URL relativa - o browser usa a mesma origem (127.0.0.1 ou localhost)
+      # Evita problemas de IPv6 no WSL2
+      NEXT_PUBLIC_API_URL: /api
       # Watchpack polling para WSL2 (file watching)
       WATCHPACK_POLLING: "true"
       CHOKIDAR_USEPOLLING: "true"

@@ -2,6 +2,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { apiClient, ApiError } from "@/lib/api";
 
+// Sync token com cookie para o middleware (server-side) conseguir ler
+function setTokenCookie(token: string) {
+  document.cookie = `token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
+}
+
+function removeTokenCookie() {
+  document.cookie = "token=; path=/; max-age=0";
+}
+
 interface User {
   id: number;
   name: string;
@@ -41,6 +50,7 @@ export const useAuthStore = create<AuthState>()(
 
       setToken: (token: string) => {
         localStorage.setItem("token", token);
+        setTokenCookie(token);
         set({ token, isAuthenticated: true });
       },
 
@@ -53,6 +63,7 @@ export const useAuthStore = create<AuthState>()(
           });
 
           localStorage.setItem("token", response.access_token);
+          setTokenCookie(response.access_token);
           set({
             token: response.access_token,
             isAuthenticated: true,
@@ -87,6 +98,7 @@ export const useAuthStore = create<AuthState>()(
 
       clear: () => {
         localStorage.removeItem("token");
+        removeTokenCookie();
         set({ token: null, user: null, isAuthenticated: false });
       },
     }),
