@@ -15,7 +15,6 @@ class PlanResource extends JsonResource
             'url' => $this->url,
             'price' => $this->price,
             'description' => $this->description,
-            'details' => DetailPlanResource::collection($this->whenLoaded('details')),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

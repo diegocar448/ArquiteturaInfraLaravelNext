@@ -44,8 +44,6 @@ class PlanController extends Controller
             return response()->json(['message' => 'Plano nao encontrado.'], 404);
         }
 
-        $plan->load('details');
-
         return response()->json([
             'data' => new PlanResource($plan),
         ]);

@@ -3891,7 +3891,6 @@ use App\Observers\PlanObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ObservedBy(PlanObserver::class)]
@@ -3912,20 +3911,10 @@ class Plan extends Model
             'price' => 'decimal:2',
         ];
     }
-
-    public function details(): HasMany
-    {
-        return $this->hasMany(DetailPlan::class);
-    }
-
-    public function tenants(): HasMany
-    {
-        return $this->hasMany(Tenant::class);
-    }
 }
 ```
 
-**Nota:** Os models `DetailPlan` e `Tenant` serao criados nos proximos passos. O Laravel nao reclama de referencias a classes que ainda nao existem — so daria erro se voce tentasse usar essas relacoes agora.
+**Nota:** As relacoes `details()` e `tenants()` serao adicionadas nos Passos 3.6 e 3.7 respectivamente, quando criarmos esses models.
 
 Crie o diretorio e o Observer `backend/app/Observers/PlanObserver.php`:
 
@@ -4484,7 +4473,6 @@ class PlanResource extends JsonResource
             'url' => $this->url,
             'price' => $this->price,
             'description' => $this->description,
-            'details' => DetailPlanResource::collection($this->whenLoaded('details')),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];
@@ -4492,8 +4480,7 @@ class PlanResource extends JsonResource
 }
 ```
 
-**O que e `whenLoaded`?**
-Se a relacao `details` foi carregada (via `->load('details')` ou `->with('details')`), inclui os detalhes na resposta. Senao, omite. Isso evita N+1 queries — os detalhes so aparecem quando voce pede explicitamente.
+**Nota:** No Passo 3.6, vamos adicionar o campo `details` aqui quando criarmos o `DetailPlanResource`.
 
 Crie `backend/app/Http/Controllers/Api/V1/PlanController.php`:
 
@@ -4543,8 +4530,6 @@ class PlanController extends Controller
         if (!$plan) {
             return response()->json(['message' => 'Plano nao encontrado.'], 404);
         }
-
-        $plan->load('details');
 
         return response()->json([
             'data' => new PlanResource($plan),
@@ -4811,6 +4796,18 @@ Rode a migration:
 docker compose exec backend php artisan migrate
 ```
 
+Antes de criar o model `DetailPlan`, adicione a relacao `details()` no `backend/app/Models/Plan.php`. Adicione o import e o metodo:
+
+```php
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+// Dentro da classe Plan, adicione:
+public function details(): HasMany
+{
+    return $this->hasMany(DetailPlan::class);
+}
+```
+
 Crie `backend/app/Models/DetailPlan.php`:
 
 ```php
@@ -4861,6 +4858,37 @@ class DetailPlanResource extends JsonResource
     }
 }
 ```
+
+Agora atualize o `backend/app/Http/Resources/PlanResource.php` para incluir os detalhes quando carregados:
+
+```php
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class PlanResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'url' => $this->url,
+            'price' => $this->price,
+            'description' => $this->description,
+            'details' => DetailPlanResource::collection($this->whenLoaded('details')),
+            'created_at' => $this->created_at->toISOString(),
+            'updated_at' => $this->updated_at->toISOString(),
+        ];
+    }
+}
+```
+
+**O que e `whenLoaded`?**
+Se a relacao `details` foi carregada (via `->load('details')` ou `->with('details')`), inclui os detalhes na resposta. Senao, omite. Isso evita N+1 queries — os detalhes so aparecem quando voce pede explicitamente.
 
 Crie o Repository `backend/app/Repositories/Contracts/DetailPlanRepositoryInterface.php`:
 
@@ -5237,6 +5265,25 @@ Route::prefix('v1')->group(function () {
 **Rotas nested:**
 O `plans.details` gera rotas como `/api/v1/plans/{plan}/details` e `/api/v1/plans/{plan}/details/{detail}`. O `except(['show'])` remove o GET individual (nao faz sentido ver um detalhe isolado).
 
+Agora atualize o metodo `show()` no `backend/app/Http/Controllers/Api/V1/PlanController.php` para carregar os detalhes:
+
+```php
+public function show(int $plan, ShowPlanAction $action): JsonResponse
+{
+    $plan = $action->execute($plan);
+
+    if (!$plan) {
+        return response()->json(['message' => 'Plano nao encontrado.'], 404);
+    }
+
+    $plan->load('details');
+
+    return response()->json([
+        'data' => new PlanResource($plan),
+    ]);
+}
+```
+
 **Testar com curl:**
 
 ```bash
@@ -5314,6 +5361,15 @@ Rode a migration:
 
 ```bash
 docker compose exec backend php artisan migrate
+```
+
+Adicione a relacao `tenants()` no `backend/app/Models/Plan.php` (se ainda nao tiver o import `HasMany`, adicione tambem):
+
+```php
+public function tenants(): HasMany
+{
+    return $this->hasMany(Tenant::class);
+}
 ```
 
 Crie `backend/app/Models/Tenant.php`:
