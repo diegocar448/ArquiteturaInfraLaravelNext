@@ -7729,7 +7729,10 @@ Crie a migration:
 
 ```bash
 docker compose exec backend php artisan make:migration create_permissions_table --create=permissions
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
 ```
+
+> **Dica de permissao:** O segundo comando corrige as permissoes dos arquivos criados pelo container Docker (que pertencem ao `root`), permitindo editar/renomear no VSCode. Confirme seu UID com `id -u` no terminal (em WSL geralmente e `1000`). Este comando sera repetido apos cada `make:migration`.
 
 Renomeie o arquivo gerado para `0001_01_02_000005_create_permissions_table.php` e edite:
 
@@ -7817,7 +7820,12 @@ Vamos criar **3 migrations**: a tabela `profiles` e as duas pivots (`permission_
 
 ### Migration: profiles
 
-Crie e renomeie para `0001_01_02_000006_create_profiles_table.php`:
+```bash
+docker compose exec backend php artisan make:migration create_profiles_table --create=profiles
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
+```
+
+Renomeie o arquivo gerado para `0001_01_02_000006_create_profiles_table.php` e edite:
 
 `backend/database/migrations/0001_01_02_000006_create_profiles_table.php`:
 
@@ -7849,7 +7857,12 @@ return new class extends Migration
 
 ### Migration: permission_profile (pivot)
 
-Crie e renomeie para `0001_01_02_000007_create_permission_profile_table.php`:
+```bash
+docker compose exec backend php artisan make:migration create_permission_profile_table --create=permission_profile
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
+```
+
+Renomeie o arquivo gerado para `0001_01_02_000007_create_permission_profile_table.php` e edite:
 
 `backend/database/migrations/0001_01_02_000007_create_permission_profile_table.php`:
 
@@ -7880,7 +7893,12 @@ return new class extends Migration
 
 ### Migration: plan_profile (pivot)
 
-Crie e renomeie para `0001_01_02_000008_create_plan_profile_table.php`:
+```bash
+docker compose exec backend php artisan make:migration create_plan_profile_table --create=plan_profile
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
+```
+
+Renomeie o arquivo gerado para `0001_01_02_000008_create_plan_profile_table.php` e edite:
 
 `backend/database/migrations/0001_01_02_000008_create_plan_profile_table.php`:
 
@@ -7971,7 +7989,12 @@ Mesmo padrao: tabela `roles` + duas pivots (`permission_role` e `role_user`).
 
 ### Migration: roles
 
-Crie e renomeie para `0001_01_02_000009_create_roles_table.php`:
+```bash
+docker compose exec backend php artisan make:migration create_roles_table --create=roles
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
+```
+
+Renomeie o arquivo gerado para `0001_01_02_000009_create_roles_table.php` e edite:
 
 `backend/database/migrations/0001_01_02_000009_create_roles_table.php`:
 
@@ -8012,7 +8035,12 @@ return new class extends Migration
 
 ### Migration: permission_role (pivot)
 
-Crie e renomeie para `0001_01_02_000010_create_permission_role_table.php`:
+```bash
+docker compose exec backend php artisan make:migration create_permission_role_table --create=permission_role
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
+```
+
+Renomeie o arquivo gerado para `0001_01_02_000010_create_permission_role_table.php` e edite:
 
 `backend/database/migrations/0001_01_02_000010_create_permission_role_table.php`:
 
@@ -8043,7 +8071,12 @@ return new class extends Migration
 
 ### Migration: role_user (pivot)
 
-Crie e renomeie para `0001_01_02_000011_create_role_user_table.php`:
+```bash
+docker compose exec backend php artisan make:migration create_role_user_table --create=role_user
+docker compose exec backend chown -R 1000:1000 /var/www/html/database/migrations/
+```
+
+Renomeie o arquivo gerado para `0001_01_02_000011_create_role_user_table.php` e edite:
 
 `backend/database/migrations/0001_01_02_000011_create_role_user_table.php`:
 
