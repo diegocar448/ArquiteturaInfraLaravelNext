@@ -1,8 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
-use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\DetailPlanController;
+use App\Http\Controllers\Api\V1\PlanController;
+use App\Http\Controllers\Api\V1\TenantController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -21,5 +22,8 @@ Route::prefix('v1')->group(function () {
         // Plan Details (nested)
         Route::apiResource('plans.details', DetailPlanController::class)
             ->except(['show']);
+
+        // Tenants CRUD
+        Route::apiResource('tenants', TenantController::class);
     });
 });

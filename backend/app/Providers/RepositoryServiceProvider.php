@@ -9,6 +9,8 @@ use App\Repositories\Contracts\PlanRepositoryInterface;
 use App\Repositories\Eloquent\PlanRepository;
 use App\Repositories\Contracts\DetailPlanRepositoryInterface;
 use App\Repositories\Eloquent\DetailPlanRepository;
+use App\Repositories\Contracts\TenantRepositoryInterface;
+use App\Repositories\Eloquent\TenantRepository;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -16,6 +18,7 @@ class RepositoryServiceProvider extends ServiceProvider
         UserRepositoryInterface::class => UserRepository::class,
         PlanRepositoryInterface::class => PlanRepository::class,
         DetailPlanRepositoryInterface::class => DetailPlanRepository::class,
+        TenantRepositoryInterface::class => TenantRepository::class,
     ];
 
     public function register(): void
