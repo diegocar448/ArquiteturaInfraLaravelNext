@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Tenant;
 
 #[ObservedBy(PlanObserver::class)]
 class Plan extends Model
@@ -31,5 +32,10 @@ class Plan extends Model
     public function details(): HasMany
     {
         return $this->hasMany(DetailPlan::class);
+    }
+
+    public function tenants(): HasMany
+    {
+        return $this->hasMany(Tenant::class);
     }
 }
