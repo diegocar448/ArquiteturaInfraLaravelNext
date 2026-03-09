@@ -8,6 +8,7 @@ import {
   QrCode,
   Star,
   Settings,
+  CreditCard,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,6 +26,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Planos", url: "/plans", icon: CreditCard }, 
   { title: "Pedidos", url: "/orders", icon: ShoppingBag },
   { title: "Cardapio", url: "/products", icon: UtensilsCrossed },
   { title: "Clientes", url: "/customers", icon: Users },
