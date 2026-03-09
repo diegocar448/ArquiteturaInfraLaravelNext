@@ -35,7 +35,21 @@ export async function apiClient<T>(
 
   // Adicionar token JWT se disponivel (client-side)
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
+    let token = localStorage.getItem("token");
+
+    // Fallback: ler do Zustand persist (auth-storage)
+    if (!token) {
+      try {
+        const authStorage = localStorage.getItem("auth-storage");
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          token = parsed?.state?.token || null;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
