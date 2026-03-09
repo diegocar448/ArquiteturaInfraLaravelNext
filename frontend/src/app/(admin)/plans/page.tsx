@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { PlanFormDialog } from "@/components/plans/plan-form-dialog";
 import { DeletePlanDialog } from "@/components/plans/delete-plan-dialog";
+import Link from "next/link";
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -103,7 +104,11 @@ export default function PlansPage() {
             ) : (
               plans.map((plan) => (
                 <TableRow key={plan.id}>
-                  <TableCell className="font-medium">{plan.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/plans/${plan.id}`} className="hover:underline">
+                      {plan.name}
+                    </Link>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{plan.url}</Badge>
                   </TableCell>
