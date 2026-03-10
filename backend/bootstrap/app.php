@@ -12,9 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //$middleware->trustProxies(at: '*');
+        $middleware->trustProxies(at: '*');
         $middleware->alias([
             'tenant' => \App\Http\Middleware\IdentifyTenant::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
