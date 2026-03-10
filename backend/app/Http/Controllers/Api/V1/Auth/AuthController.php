@@ -10,8 +10,18 @@ use App\Actions\Auth\LoginAction;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * @tags Auth
+ */
 class AuthController extends Controller
 {
+    /**
+     * Login
+     *
+     * Autentica o usuario e retorna um token JWT.
+     *
+     * @unauthenticated
+     */
     public function login(LoginRequest $request, LoginAction $action): JsonResponse
     {
         try {
@@ -25,6 +35,11 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * Usuario autenticado
+     *
+     * Retorna os dados do usuario autenticado no token JWT.
+     */
     public function me(): JsonResponse
     {
         return response()->json([
@@ -32,6 +47,11 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Logout
+     *
+     * Invalida o token JWT atual.
+     */
     public function logout(): JsonResponse
     {
         auth()->logout();
@@ -41,6 +61,11 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Refresh token
+     *
+     * Gera um novo token JWT a partir do token atual.
+     */
     public function refresh(): JsonResponse
     {
         $token = auth()->refresh();

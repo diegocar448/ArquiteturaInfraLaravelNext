@@ -16,8 +16,16 @@ use App\Actions\Role\DeleteRoleAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @tags Papeis (Roles)
+ */
 class RoleController extends Controller
 {
+    /**
+     * Listar papeis
+     *
+     * Retorna todos os papeis do tenant com paginacao. Requer permissao `roles.view`.
+     */
     public function index(ListRolesAction $action): AnonymousResourceCollection
     {
         $roles = $action->execute(
@@ -27,6 +35,11 @@ class RoleController extends Controller
         return RoleResource::collection($roles);
     }
 
+    /**
+     * Criar papel
+     *
+     * Cria um novo papel no tenant. Requer permissao `roles.create`.
+     */
     public function store(StoreRoleRequest $request, CreateRoleAction $action): JsonResponse
     {
         $role = $action->execute(CreateRoleDTO::fromRequest($request));
@@ -36,6 +49,11 @@ class RoleController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * Exibir papel
+     *
+     * Retorna um papel com suas permissoes. Requer permissao `roles.view`.
+     */
     public function show(int $role, ShowRoleAction $action): JsonResponse
     {
         $role = $action->execute($role);
@@ -51,6 +69,11 @@ class RoleController extends Controller
         ]);
     }
 
+    /**
+     * Atualizar papel
+     *
+     * Atualiza os dados de um papel existente. Requer permissao `roles.edit`.
+     */
     public function update(UpdateRoleRequest $request, int $role, UpdateRoleAction $action): JsonResponse
     {
         $updated = $action->execute($role, UpdateRoleDTO::fromRequest($request));
@@ -64,6 +87,11 @@ class RoleController extends Controller
         ]);
     }
 
+    /**
+     * Remover papel
+     *
+     * Remove um papel do tenant. Requer permissao `roles.delete`.
+     */
     public function destroy(int $role, DeleteRoleAction $action): JsonResponse
     {
         $deleted = $action->execute($role);

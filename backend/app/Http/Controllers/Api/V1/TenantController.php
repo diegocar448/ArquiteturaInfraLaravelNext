@@ -16,8 +16,16 @@ use App\Actions\Tenant\DeleteTenantAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @tags Tenants
+ */
 class TenantController extends Controller
 {
+    /**
+     * Listar tenants
+     *
+     * Retorna todos os tenants com paginacao. Requer permissao `tenants.view`.
+     */
     public function index(ListTenantsAction $action): AnonymousResourceCollection
     {
         $tenants = $action->execute(
@@ -27,6 +35,11 @@ class TenantController extends Controller
         return TenantResource::collection($tenants);
     }
 
+    /**
+     * Criar tenant
+     *
+     * Cria um novo tenant (restaurante). Requer permissao `tenants.create`.
+     */
     public function store(StoreTenantRequest $request, CreateTenantAction $action): JsonResponse
     {
         $tenant = $action->execute(CreateTenantDTO::fromRequest($request));
@@ -38,6 +51,11 @@ class TenantController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * Exibir tenant
+     *
+     * Retorna os dados de um tenant especifico. Requer permissao `tenants.view`.
+     */
     public function show(int $tenant, ShowTenantAction $action): JsonResponse
     {
         $tenant = $action->execute($tenant);
@@ -51,6 +69,11 @@ class TenantController extends Controller
         ]);
     }
 
+    /**
+     * Atualizar tenant
+     *
+     * Atualiza os dados de um tenant existente. Requer permissao `tenants.edit`.
+     */
     public function update(UpdateTenantRequest $request, int $tenant, UpdateTenantAction $action): JsonResponse
     {
         $updated = $action->execute($tenant, UpdateTenantDTO::fromRequest($request));
@@ -64,6 +87,11 @@ class TenantController extends Controller
         ]);
     }
 
+    /**
+     * Remover tenant
+     *
+     * Remove um tenant do sistema. Requer permissao `tenants.delete`.
+     */
     public function destroy(int $tenant, DeleteTenantAction $action): JsonResponse
     {
         $deleted = $action->execute($tenant);

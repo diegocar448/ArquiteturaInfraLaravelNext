@@ -16,8 +16,16 @@ use App\Actions\Plan\DeletePlanAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @tags Planos
+ */
 class PlanController extends Controller
 {
+    /**
+     * Listar planos
+     *
+     * Retorna todos os planos com paginacao. Requer permissao `plans.view`.
+     */
     public function index(ListPlansAction $action): AnonymousResourceCollection
     {
         $plans = $action->execute(
@@ -27,6 +35,11 @@ class PlanController extends Controller
         return PlanResource::collection($plans);
     }
 
+    /**
+     * Criar plano
+     *
+     * Cria um novo plano de assinatura. Requer permissao `plans.create`.
+     */
     public function store(StorePlanRequest $request, CreatePlanAction $action): JsonResponse
     {
         $plan = $action->execute(CreatePlanDTO::fromRequest($request));
@@ -36,6 +49,11 @@ class PlanController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * Exibir plano
+     *
+     * Retorna um plano especifico com seus detalhes. Requer permissao `plans.view`.
+     */
     public function show(int $plan, ShowPlanAction $action): JsonResponse
     {
         $plan = $action->execute($plan);
@@ -51,6 +69,11 @@ class PlanController extends Controller
         ]);
     }
 
+    /**
+     * Atualizar plano
+     *
+     * Atualiza os dados de um plano existente. Requer permissao `plans.edit`.
+     */
     public function update(UpdatePlanRequest $request, int $plan, UpdatePlanAction $action): JsonResponse
     {
         $updated = $action->execute($plan, UpdatePlanDTO::fromRequest($request));
@@ -64,6 +87,11 @@ class PlanController extends Controller
         ]);
     }
 
+    /**
+     * Remover plano
+     *
+     * Remove um plano de assinatura. Requer permissao `plans.delete`.
+     */
     public function destroy(int $plan, DeletePlanAction $action): JsonResponse
     {
         $deleted = $action->execute($plan);

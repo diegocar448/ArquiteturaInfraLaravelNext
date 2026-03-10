@@ -13,13 +13,26 @@ use App\Actions\Plan\DeleteDetailPlanAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @tags Detalhes do Plano
+ */
 class DetailPlanController extends Controller
 {
+    /**
+     * Listar detalhes do plano
+     *
+     * Retorna todos os detalhes de um plano. Requer permissao `detail_plans.view`.
+     */
     public function index(int $plan, ListDetailPlansAction $action): AnonymousResourceCollection
     {
         return DetailPlanResource::collection($action->execute($plan));
     }
 
+    /**
+     * Criar detalhe do plano
+     *
+     * Adiciona um novo detalhe ao plano. Requer permissao `detail_plans.create`.
+     */
     public function store(StoreDetailPlanRequest $request, int $plan, CreateDetailPlanAction $action): JsonResponse
     {
         $detail = $action->execute($plan, $request->validated('name'));
@@ -29,6 +42,11 @@ class DetailPlanController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * Atualizar detalhe do plano
+     *
+     * Atualiza um detalhe existente. Requer permissao `detail_plans.edit`.
+     */
     public function update(UpdateDetailPlanRequest $request, int $plan, int $detail, UpdateDetailPlanAction $action): JsonResponse
     {
         $updated = $action->execute($detail, $request->validated('name'));
@@ -42,6 +60,11 @@ class DetailPlanController extends Controller
         ]);
     }
 
+    /**
+     * Remover detalhe do plano
+     *
+     * Remove um detalhe do plano. Requer permissao `detail_plans.delete`.
+     */
     public function destroy(int $plan, int $detail, DeleteDetailPlanAction $action): JsonResponse
     {
         $deleted = $action->execute($detail);

@@ -11,12 +11,15 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * @tags ACL (Controle de Acesso)
+ */
 class AclSyncController extends Controller
 {
     /**
-     * Sync permissions de um profile.
-     * POST /v1/profiles/{profile}/permissions
-     * Body: { "permissions": [1, 2, 3] }
+     * Sincronizar permissoes de um perfil
+     *
+     * Substitui todas as permissoes de um perfil pelos IDs informados. Requer permissao `profiles.edit`.
      */
     public function syncProfilePermissions(Request $request, int $profile): JsonResponse
     {
@@ -40,9 +43,9 @@ class AclSyncController extends Controller
     }
 
     /**
-     * Sync profiles de um plan.
-     * POST /v1/plans/{plan}/profiles
-     * Body: { "profiles": [1, 2] }
+     * Sincronizar perfis de um plano
+     *
+     * Substitui todos os perfis vinculados a um plano pelos IDs informados. Requer permissao `plans.edit`.
      */
     public function syncPlanProfiles(Request $request, int $plan): JsonResponse
     {
@@ -66,9 +69,9 @@ class AclSyncController extends Controller
     }
 
     /**
-     * Sync permissions de um role.
-     * POST /v1/roles/{role}/permissions
-     * Body: { "permissions": [1, 2, 3] }
+     * Sincronizar permissoes de um papel
+     *
+     * Substitui todas as permissoes de um papel pelos IDs informados. Requer permissao `roles.edit`.
      */
     public function syncRolePermissions(Request $request, int $role): JsonResponse
     {
@@ -92,9 +95,9 @@ class AclSyncController extends Controller
     }
 
     /**
-     * Sync roles de um user.
-     * POST /v1/users/{user}/roles
-     * Body: { "roles": [1, 2] }
+     * Sincronizar papeis de um usuario
+     *
+     * Substitui todos os papeis de um usuario pelos IDs informados. Requer permissao `users.edit`.
      */
     public function syncUserRoles(Request $request, int $user): JsonResponse
     {
@@ -118,8 +121,9 @@ class AclSyncController extends Controller
     }
 
     /**
-     * Listar todas as permissions (para exibir em checkboxes no frontend).
-     * GET /v1/permissions
+     * Listar permissoes
+     *
+     * Retorna todas as permissoes do sistema para uso em checkboxes no frontend.
      */
     public function listPermissions(): JsonResponse
     {

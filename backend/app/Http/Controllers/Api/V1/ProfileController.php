@@ -16,8 +16,16 @@ use App\Actions\Profile\DeleteProfileAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * @tags Perfis (Profiles)
+ */
 class ProfileController extends Controller
 {
+    /**
+     * Listar perfis
+     *
+     * Retorna todos os perfis com paginacao. Requer permissao `profiles.view`.
+     */
     public function index(ListProfilesAction $action): AnonymousResourceCollection
     {
         $profiles = $action->execute(
@@ -27,6 +35,11 @@ class ProfileController extends Controller
         return ProfileResource::collection($profiles);
     }
 
+    /**
+     * Criar perfil
+     *
+     * Cria um novo perfil de acesso. Requer permissao `profiles.create`.
+     */
     public function store(StoreProfileRequest $request, CreateProfileAction $action): JsonResponse
     {
         $profile = $action->execute(CreateProfileDTO::fromRequest($request));
@@ -36,6 +49,11 @@ class ProfileController extends Controller
             ->setStatusCode(201);
     }
 
+    /**
+     * Exibir perfil
+     *
+     * Retorna um perfil com suas permissoes. Requer permissao `profiles.view`.
+     */
     public function show(int $profile, ShowProfileAction $action): JsonResponse
     {
         $profile = $action->execute($profile);
@@ -51,6 +69,11 @@ class ProfileController extends Controller
         ]);
     }
 
+    /**
+     * Atualizar perfil
+     *
+     * Atualiza os dados de um perfil existente. Requer permissao `profiles.edit`.
+     */
     public function update(UpdateProfileRequest $request, int $profile, UpdateProfileAction $action): JsonResponse
     {
         $updated = $action->execute($profile, UpdateProfileDTO::fromRequest($request));
@@ -64,6 +87,11 @@ class ProfileController extends Controller
         ]);
     }
 
+    /**
+     * Remover perfil
+     *
+     * Remove um perfil de acesso. Requer permissao `profiles.delete`.
+     */
     public function destroy(int $profile, DeleteProfileAction $action): JsonResponse
     {
         $deleted = $action->execute($profile);

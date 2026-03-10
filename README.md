@@ -132,7 +132,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [x] Autenticacao JWT (Admin + Client)
 - [x] Multi-tenancy (single-db, tenant_id, Global Scopes)
 - [x] Planos de assinatura (CRUD + detalhes)
-- [ ] ACL dupla camada (Plan->Profile->Permission + User->Role->Permission)
+- [x] ACL dupla camada (Plan->Profile->Permission + User->Role->Permission)
 - [ ] Catalogo: Categories + Products (CRUD, tenant-scoped)
 - [ ] Mesas com QR Code
 - [ ] Sistema de Pedidos com Kafka
@@ -141,7 +141,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [ ] Dashboard com metricas
 - [ ] Landing page publica (SSR)
 - [ ] Testes completos (Unit, Integration, E2E)
-- [ ] Documentacao API (OpenAPI/Swagger)
+- [x] Documentacao API (OpenAPI/Swagger via Scramble)
 
 ---
 
@@ -11252,6 +11252,41 @@ frontend/
 - `BelongsToTenant` em Roles para escopo automatico
 - Frontend: Checkbox grid para gerenciar permissoes
 - Agrupamento de dados por prefixo (`plans.view` → grupo `plans`)
+
+### Documentacao da API (Swagger/OpenAPI)
+
+A API possui documentacao interativa gerada automaticamente pelo [Scramble](https://scramble.dedoc.co/).
+
+**Acessar:** [http://localhost/docs/api](http://localhost/docs/api)
+
+A documentacao inclui:
+- Todos os endpoints organizados por tags (Auth, Planos, Tenants, Perfis, Papeis, ACL)
+- Schemas de request/response gerados a partir dos FormRequests e Resources
+- Autenticacao JWT Bearer configurada (botao "Authorize" no topo)
+- Botao "Try It" para testar endpoints direto no navegador
+
+**Como usar:**
+1. Acesse `http://localhost/docs/api`
+2. Clique em **POST /v1/auth/login** e use as credenciais `admin@orderly.com` / `password`
+3. Copie o `access_token` retornado
+4. Clique no botao **Authorize** (cadeado) e cole o token
+5. Agora voce pode testar todos os endpoints protegidos
+
+**Regenerar spec OpenAPI (JSON):**
+```bash
+# O JSON e gerado dinamicamente em:
+curl http://localhost/docs/api.json | python3 -m json.tool
+```
+
+**Arquivos envolvidos:**
+```
+backend/
+├── config/scramble.php          # Configuracao do Scramble (titulo, descricao, tema)
+├── app/Providers/AppServiceProvider.php  # Security scheme JWT Bearer
+└── app/Http/Controllers/Api/V1/ # PHPDoc @tags e descricoes nos controllers
+docker/
+└── nginx/default.conf           # Rota /docs -> PHP-FPM
+```
 
 **Proximo:** Fase 5 - Catalogo: Categorias + Produtos
 
