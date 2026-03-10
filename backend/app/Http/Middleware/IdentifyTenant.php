@@ -8,7 +8,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class IdentifyTenant
 {
-    public function handle(Request $request, Closure $next): Response
+    /**
+     * @param  string  $mode  'optional' (default) ou 'required'
+     */
+    public function handle(Request $request, Closure $next, string $mode = 'optional'): Response
     {
         $user = auth('api')->user();
 
@@ -22,6 +25,10 @@ class IdentifyTenant
             }
 
             app()->instance('currentTenant', $tenant);
+        } elseif ($mode === 'required') {
+            return response()->json([
+                'message' => 'Esta acao requer um usuario vinculado a um tenant.',
+            ], 403);
         }
 
         return $next($request);

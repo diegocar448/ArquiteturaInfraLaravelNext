@@ -12469,25 +12469,83 @@ class CategoryController extends Controller
 }
 ```
 
+**Antes das rotas:** precisamos evoluir o middleware `IdentifyTenant` para suportar um modo `required`. Ate agora, o middleware aceita usuarios sem tenant (como o super-admin) para que ele possa gerenciar planos e tenants. Mas rotas de catalogo **exigem** um tenant — sem ele, o `BelongsToTenant` nao consegue preencher o `tenant_id` e o INSERT falha.
+
+Edite `backend/app/Http/Middleware/IdentifyTenant.php`:
+
+```php
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class IdentifyTenant
+{
+    /**
+     * @param  string  $mode  'optional' (default) ou 'required'
+     */
+    public function handle(Request $request, Closure $next, string $mode = 'optional'): Response
+    {
+        $user = auth('api')->user();
+
+        if ($user && $user->tenant_id) {
+            $tenant = $user->tenant;
+
+            if (!$tenant || !$tenant->active) {
+                return response()->json([
+                    'message' => 'Tenant inativo ou nao encontrado.',
+                ], 403);
+            }
+
+            app()->instance('currentTenant', $tenant);
+        } elseif ($mode === 'required') {
+            return response()->json([
+                'message' => 'Esta acao requer um usuario vinculado a um tenant.',
+            ], 403);
+        }
+
+        return $next($request);
+    }
+}
+```
+
+**O que mudou:**
+- O metodo `handle` agora recebe um terceiro parametro `$mode` com valor default `'optional'`
+- Quando `$mode === 'required'` e o usuario nao tem `tenant_id`, retorna 403
+- Rotas existentes (plans, tenants, profiles, roles) continuam com `tenant` (opcional) — o super-admin ainda funciona
+- Rotas de catalogo (categories, products) usam `tenant:required` — bloqueia o super-admin
+
+**Como usar nas rotas:**
+- `middleware('tenant')` — modo opcional (padrao, compativel com todas as rotas existentes)
+- `middleware('tenant:required')` — modo obrigatorio (para rotas tenant-scoped)
+
 Adicione as rotas em `backend/routes/api.php`. No topo, adicione o import:
 
 ```php
 use App\Http\Controllers\Api\V1\CategoryController;
 ```
 
-Dentro do grupo `middleware('auth:api', 'tenant')`, adicione:
+Dentro do grupo `middleware('auth:api', 'tenant')`, crie um sub-grupo com `tenant:required` para as rotas de catalogo:
 
 ```php
-// Categories CRUD
-Route::apiResource('categories', CategoryController::class)
-    ->middleware([
-        'index' => 'permission:categories.view',
-        'show' => 'permission:categories.view',
-        'store' => 'permission:categories.create',
-        'update' => 'permission:categories.edit',
-        'destroy' => 'permission:categories.delete',
-    ]);
+// --- Rotas tenant-scoped (requer usuario vinculado a tenant) ---
+Route::middleware('tenant:required')->group(function () {
+    // Categories CRUD
+    Route::apiResource('categories', CategoryController::class)
+        ->middleware([
+            'index' => 'permission:categories.view',
+            'show' => 'permission:categories.view',
+            'store' => 'permission:categories.create',
+            'update' => 'permission:categories.edit',
+            'destroy' => 'permission:categories.delete',
+        ]);
+});
 ```
+
+> **Nota:** O middleware `tenant:required` fica **dentro** do grupo `auth:api, tenant`. Assim, a cadeia e: `auth:api` (verifica JWT) → `tenant` (identifica tenant se houver) → `tenant:required` (bloqueia se nao houver). O duplo `tenant` nao causa problema — o Laravel executa ambos, e o segundo valida o modo `required`.
 
 Limpe o cache de rotas:
 
@@ -12514,12 +12572,13 @@ DELETE    api/v1/categories/{category} ... categories.destroy
 
 ```
 backend/
+├── app/Http/Middleware/IdentifyTenant.php  (modificado — modo required)
 ├── app/Http/Controllers/Api/V1/CategoryController.php
 ├── app/Http/Requests/Category/
 │   ├── StoreCategoryRequest.php
 │   └── UpdateCategoryRequest.php
 ├── app/Http/Resources/CategoryResource.php
-└── routes/api.php  (modificado — import + rotas)
+└── routes/api.php  (modificado — import + rotas + tenant:required)
 ```
 
 ---
@@ -13407,18 +13466,24 @@ Adicione as rotas em `backend/routes/api.php`. No topo, adicione:
 use App\Http\Controllers\Api\V1\ProductController;
 ```
 
-Dentro do grupo `middleware('auth:api', 'tenant')`:
+Dentro do grupo `tenant:required` (criado no Passo 5.4), adicione junto com as categories:
 
 ```php
-// Products CRUD
-Route::apiResource('products', ProductController::class)
-    ->middleware([
-        'index' => 'permission:products.view',
-        'show' => 'permission:products.view',
-        'store' => 'permission:products.create',
-        'update' => 'permission:products.edit',
-        'destroy' => 'permission:products.delete',
-    ]);
+Route::middleware('tenant:required')->group(function () {
+    // Categories CRUD (Passo 5.4)
+    Route::apiResource('categories', CategoryController::class)
+        ->middleware([...]);
+
+    // Products CRUD
+    Route::apiResource('products', ProductController::class)
+        ->middleware([
+            'index' => 'permission:products.view',
+            'show' => 'permission:products.view',
+            'store' => 'permission:products.create',
+            'update' => 'permission:products.edit',
+            'destroy' => 'permission:products.delete',
+        ]);
+});
 ```
 
 Limpe o cache:
@@ -13657,7 +13722,7 @@ public function syncCategories(Request $request, int $product): JsonResponse
 }
 ```
 
-Adicione a rota em `backend/routes/api.php`, dentro do grupo autenticado:
+Adicione a rota em `backend/routes/api.php`, dentro do grupo `tenant:required` (junto com categories e products):
 
 ```php
 // Product ↔ Category sync
@@ -13881,7 +13946,25 @@ Deve retornar erro 422: `"O status deve ser: active, inactive ou featured."`
 
 ## Passo 5.11 - Frontend: tipos TypeScript + servicos do Catalogo
 
-Crie os tipos TypeScript para o catalogo.
+**Primeiro**, atualize a interface `User` no auth store para incluir `tenant_id` e `is_super_admin` (a API `/auth/me` ja retorna esses campos, mas o frontend nao usava ate agora).
+
+Edite `frontend/src/stores/auth-store.ts` — atualize a interface `User`:
+
+```typescript
+interface User {
+  id: number;
+  tenant_id: number | null;
+  name: string;
+  email: string;
+  is_super_admin: boolean;
+  created_at: string;
+}
+```
+
+**Por que precisamos disso?**
+No Passo 5.4, adicionamos o middleware `tenant:required` que bloqueia o super-admin nas rotas de catalogo. Agora o frontend precisa saber se o usuario tem tenant para exibir um alerta amigavel em vez de um erro generico.
+
+Agora crie os tipos TypeScript para o catalogo.
 
 Crie `frontend/src/types/catalog.ts`:
 
@@ -14054,8 +14137,50 @@ frontend/src/
 Instale os componentes shadcn/ui necessarios (se ainda nao instalou na Fase 3):
 
 ```bash
-docker compose exec frontend npx shadcn@latest add table badge dialog textarea
+docker compose exec frontend npx shadcn@latest add table badge dialog textarea alert
 ```
+
+**Componente reutilizavel: TenantRequiredAlert**
+
+Antes de criar as paginas, crie um componente que exibe um alerta quando o usuario logado nao tem tenant (ex: super-admin). Esse componente sera reutilizado em todas as paginas tenant-scoped.
+
+Crie `frontend/src/components/tenant-required-alert.tsx`:
+
+```tsx
+"use client";
+
+import { useAuthStore } from "@/stores/auth-store";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ShieldAlert } from "lucide-react";
+
+interface TenantRequiredAlertProps {
+  resource: string;
+}
+
+export function TenantRequiredAlert({ resource }: TenantRequiredAlertProps) {
+  const user = useAuthStore((s) => s.user);
+
+  if (!user || user.tenant_id) return null;
+
+  return (
+    <Alert variant="destructive">
+      <ShieldAlert className="h-4 w-4" />
+      <AlertTitle>Tenant necessario</AlertTitle>
+      <AlertDescription>
+        Voce esta logado como super-admin sem tenant vinculado. Para gerenciar{" "}
+        {resource}, faca login com um usuario que pertenca a um tenant (ex:{" "}
+        <strong>gerente@demo.com</strong>).
+      </AlertDescription>
+    </Alert>
+  );
+}
+```
+
+**Como funciona:**
+- Le o `user` do auth store (Zustand)
+- Se `user.tenant_id` existe, retorna `null` (nao renderiza nada)
+- Se nao tem tenant, exibe um `Alert` vermelho com a mensagem
+- A prop `resource` permite personalizar: `"categorias"`, `"produtos"`, `"mesas"`, etc.
 
 Crie o diretorio para componentes de categorias:
 
@@ -14286,6 +14411,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { DeleteCategoryDialog } from "@/components/categories/delete-category-dialog";
+import { TenantRequiredAlert } from "@/components/tenant-required-alert";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -14322,6 +14448,8 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-4">
+      <TenantRequiredAlert resource="categorias" />
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Categorias</h1>
         <Button onClick={() => setCreateOpen(true)}>
@@ -14409,20 +14537,229 @@ export default function CategoriesPage() {
 }
 ```
 
-Adicione o link na sidebar. Edite `frontend/src/components/app-sidebar.tsx` e adicione no array de itens do menu:
+**Sidebar condicional por perfil de usuario:**
 
-```typescript
-{
-  title: "Categorias",
-  url: "/categories",
-  icon: FolderTree, // import { FolderTree } from "lucide-react"
-},
+Ate agora a sidebar mostrava todos os itens para todos os usuarios. Agora vamos separar em grupos:
+- **Plataforma** (super-admin): Planos, Tenants, Perfis, Papeis
+- **Operacao** (usuario com tenant): Categorias, Produtos, Pedidos, Mesas, etc.
+- **Geral** (todos): Dashboard, Configuracoes
+
+Reescreva `frontend/src/components/app-sidebar.tsx`:
+
+```tsx
+"use client";
+
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Users,
+  QrCode,
+  Star,
+  Settings,
+  CreditCard,
+  Shield,
+  UserCog,
+  FolderTree,
+  ShoppingBasket,
+  Building2,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuthStore } from "@/stores/auth-store";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
+
+const adminItems = [
+  { title: "Planos", url: "/plans", icon: CreditCard },
+  { title: "Tenants", url: "/tenants", icon: Building2 },
+  { title: "Perfis", url: "/profiles", icon: Shield },
+  { title: "Papeis", url: "/roles", icon: UserCog },
+];
+
+const tenantItems = [
+  { title: "Categorias", url: "/categories", icon: FolderTree },
+  { title: "Produtos", url: "/products", icon: ShoppingBasket },
+  { title: "Pedidos", url: "/orders", icon: ShoppingBag },
+  { title: "Mesas", url: "/tables", icon: QrCode },
+  { title: "Clientes", url: "/customers", icon: Users },
+  { title: "Avaliacoes", url: "/reviews", icon: Star },
+];
+
+export function AppSidebar() {
+  const pathname = usePathname();
+  const user = useAuthStore((s) => s.user);
+
+  const isSuperAdmin = user?.is_super_admin ?? false;
+  const hasTenant = !!user?.tenant_id;
+
+  return (
+    <Sidebar>
+      <SidebarHeader className="border-b px-6 py-4">
+        <h2 className="text-lg font-bold">Orderly</h2>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Geral</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/dashboard"}>
+                  <Link href="/dashboard">
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {isSuperAdmin && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={pathname === item.url}>
+                        <Link href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {hasTenant && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>Operacao</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {tenantItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={pathname === item.url}>
+                        <Link href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        <SidebarSeparator />
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/settings"}>
+                  <Link href="/settings">
+                    <Settings />
+                    <span>Configuracoes</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
 ```
+
+**Como funciona:**
+- `useAuthStore` le `is_super_admin` e `tenant_id` do usuario logado
+- `isSuperAdmin` → mostra grupo "Plataforma" (Planos, Tenants, Perfis, Papeis)
+- `hasTenant` → mostra grupo "Operacao" (Categorias, Produtos, Pedidos, etc.)
+- Dashboard e Configuracoes ficam visiveis para todos
+- Os grupos sao separados por `SidebarSeparator` para clareza visual
+
+**Resultado por usuario:**
+
+| Usuario | Sidebar |
+|---|---|
+| `admin@orderly.com` (super-admin, sem tenant) | Dashboard, **Plataforma** (Planos, Tenants, Perfis, Papeis), Configuracoes |
+| `gerente@demo.com` (tenant) | Dashboard, **Operacao** (Categorias, Produtos, Pedidos, Mesas, Clientes, Avaliacoes), Configuracoes |
+
+**Fix: sidebar vazia apos F5 (page refresh)**
+
+O Zustand so persiste o `token` (via `partialize`), nao o `user`. Ao dar F5, o `user` e `null` ate que `fetchUser()` seja chamado — e a sidebar nao renderiza os grupos condicionais.
+
+Para corrigir, atualize `frontend/src/app/(admin)/layout.tsx` para chamar `fetchUser()` quando houver token mas nao houver user:
+
+```tsx
+"use client";
+
+import { useEffect } from "react";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { AppHeader } from "@/components/app-header";
+import { useAuthStore } from "@/stores/auth-store";
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const fetchUser = useAuthStore((s) => s.fetchUser);
+
+  useEffect(() => {
+    if (token && !user) {
+      fetchUser();
+    }
+  }, [token, user, fetchUser]);
+
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <AppHeader />
+        <main className="flex-1 p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+```
+
+**Como funciona:**
+- Na hidratacao, o Zustand restaura apenas o `token` do `localStorage`
+- O `useEffect` detecta que tem `token` mas nao tem `user` e chama `fetchUser()`
+- `fetchUser()` faz `GET /api/v1/auth/me` e popula o `user` no store
+- A sidebar re-renderiza com `is_super_admin` e `tenant_id` corretos
 
 ### Arquivos criados
 
 ```
 frontend/src/
+├── stores/auth-store.ts                  (modificado — tenant_id + is_super_admin)
+├── components/tenant-required-alert.tsx  (novo — alerta reutilizavel)
+├── app/(admin)/layout.tsx               (modificado — fetchUser on hydration)
 ├── app/(admin)/categories/page.tsx
 ├── components/categories/
 │   ├── category-form-dialog.tsx
@@ -14710,6 +15047,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
+import { TenantRequiredAlert } from "@/components/tenant-required-alert";
 
 const flagLabels: Record<string, string> = {
   active: "Ativo",
@@ -14765,6 +15103,8 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-4">
+      <TenantRequiredAlert resource="produtos" />
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Produtos</h1>
         <Button onClick={() => setCreateOpen(true)}>
@@ -14860,15 +15200,7 @@ export default function ProductsPage() {
 }
 ```
 
-Adicione o link na sidebar. Edite `frontend/src/components/app-sidebar.tsx`:
-
-```typescript
-{
-  title: "Produtos",
-  url: "/products",
-  icon: ShoppingBasket, // import { ShoppingBasket } from "lucide-react"
-},
-```
+> **Nota:** A sidebar ja foi atualizada no Passo 5.12 com os itens de Categorias e Produtos no grupo "Operacao".
 
 ### Arquivos criados
 
@@ -15065,10 +15397,12 @@ backend/
 ├── app/Http/Resources/
 │   ├── CategoryResource.php
 │   └── ProductResource.php
+├── app/Http/Middleware/IdentifyTenant.php        (modificado — modo required)
 ├── app/Providers/RepositoryServiceProvider.php  (modificado)
-└── routes/api.php  (modificado)
+└── routes/api.php  (modificado — tenant:required)
 
 frontend/src/
+├── stores/auth-store.ts                  (modificado — tenant_id + is_super_admin)
 ├── types/catalog.ts
 ├── services/
 │   ├── category-service.ts
@@ -15077,6 +15411,7 @@ frontend/src/
 │   ├── categories/page.tsx
 │   └── products/page.tsx
 ├── components/
+│   ├── tenant-required-alert.tsx          (novo — alerta reutilizavel)
 │   ├── categories/
 │   │   ├── category-form-dialog.tsx
 │   │   └── delete-category-dialog.tsx
@@ -15096,6 +15431,8 @@ frontend/src/
 - **`flag` como string** — mais flexivel que enum nativo, validado no FormRequest
 - **`BelongsToTenant` reutilizado** — mesma infraestrutura de multi-tenancy da Fase 3
 - **Isolamento automatico** — TenantScope filtra categorias e produtos sem codigo extra
+- **Middleware parametrizado** — `tenant:required` vs `tenant` (opcional) para controlar acesso por tipo de rota
+- **Alerta frontend reutilizavel** — componente `TenantRequiredAlert` exibe aviso amigavel para super-admin sem tenant
 
 **Proximo:** Fase 6 - Mesas com QR Code
 

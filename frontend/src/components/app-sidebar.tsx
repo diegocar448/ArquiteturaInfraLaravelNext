@@ -13,9 +13,11 @@ import {
   UserCog,
   FolderTree,
   ShoppingBasket,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuthStore } from "@/stores/auth-store";
 import {
   Sidebar,
   SidebarContent,
@@ -26,25 +28,31 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 
-const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Planos", url: "/plans", icon: CreditCard }, 
-  { title: "Perfis", url: "/profiles", icon: Shield},
-  { title: "Papeis", url: "/roles",  icon: UserCog },
-  { title: "Categorias", url: "/categories", icon: FolderTree},
+const adminItems = [
+  { title: "Planos", url: "/plans", icon: CreditCard },
+  { title: "Tenants", url: "/tenants", icon: Building2 },
+  { title: "Perfis", url: "/profiles", icon: Shield },
+  { title: "Papeis", url: "/roles", icon: UserCog },
+];
+
+const tenantItems = [
+  { title: "Categorias", url: "/categories", icon: FolderTree },
   { title: "Produtos", url: "/products", icon: ShoppingBasket },
   { title: "Pedidos", url: "/orders", icon: ShoppingBag },
-  { title: "Cardapio", url: "/products", icon: UtensilsCrossed },
-  { title: "Clientes", url: "/customers", icon: Users },
   { title: "Mesas", url: "/tables", icon: QrCode },
+  { title: "Clientes", url: "/customers", icon: Users },
   { title: "Avaliacoes", url: "/reviews", icon: Star },
-  { title: "Configuracoes", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const user = useAuthStore((s) => s.user);
+
+  const isSuperAdmin = user?.is_super_admin ?? false;
+  const hasTenant = !!user?.tenant_id;
 
   return (
     <Sidebar>
@@ -53,19 +61,79 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupLabel>Geral</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/dashboard"}>
+                  <Link href="/dashboard">
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {isSuperAdmin && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={pathname === item.url}>
+                        <Link href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {hasTenant && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>Operacao</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {tenantItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild isActive={pathname === item.url}>
+                        <Link href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        <SidebarSeparator />
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/settings"}>
+                  <Link href="/settings">
+                    <Settings />
+                    <span>Configuracoes</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

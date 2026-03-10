@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
+import { TenantRequiredAlert } from "@/components/tenant-required-alert";
 
 const flagLabels: Record<string, string> = {
   active: "Ativo",
@@ -72,6 +73,8 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-4">
+      <TenantRequiredAlert resource="produtos" />
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Produtos</h1>
         <Button onClick={() => setCreateOpen(true)}>

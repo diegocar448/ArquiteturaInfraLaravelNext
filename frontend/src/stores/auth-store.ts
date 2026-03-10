@@ -13,8 +13,10 @@ function removeTokenCookie() {
 
 interface User {
   id: number;
+  tenant_id: number | null;
   name: string;
   email: string;
+  is_super_admin: boolean;
   created_at: string;
 }
 

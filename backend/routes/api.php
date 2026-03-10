@@ -83,28 +83,31 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:users.edit');
 
 
+        // --- Rotas tenant-scoped (requer usuario vinculado a tenant) ---
+        Route::middleware('tenant:required')->group(function () {
             // Categories CRUD
-        Route::apiResource('categories', CategoryController::class)
-            ->middleware([
-                'index' => 'permission:categories.view',
-                'show' => 'permission:categories.view',
-                'store' => 'permission:categories.create',
-                'update' => 'permission:categories.edit',
-                'destroy' => 'permission:categories.delete',
-            ]);
+            Route::apiResource('categories', CategoryController::class)
+                ->middleware([
+                    'index' => 'permission:categories.view',
+                    'show' => 'permission:categories.view',
+                    'store' => 'permission:categories.create',
+                    'update' => 'permission:categories.edit',
+                    'destroy' => 'permission:categories.delete',
+                ]);
 
-        // Products CRUD
-        Route::apiResource('products', ProductController::class)
-            ->middleware([
-                'index' => 'permission:products.view',
-                'show' => 'permission:products.view',
-                'store' => 'permission:products.create',
-                'update' => 'permission:products.edit',
-                'destroy' => 'permission:products.delete',
-            ]);
-        
-        // Product ↔ Category sync
-        Route::post('products/{product}/categories', [ProductController::class, 'syncCategories'])
-            ->middleware('permission:products.edit');
+            // Products CRUD
+            Route::apiResource('products', ProductController::class)
+                ->middleware([
+                    'index' => 'permission:products.view',
+                    'show' => 'permission:products.view',
+                    'store' => 'permission:products.create',
+                    'update' => 'permission:products.edit',
+                    'destroy' => 'permission:products.delete',
+                ]);
+
+            // Product ↔ Category sync
+            Route::post('products/{product}/categories', [ProductController::class, 'syncCategories'])
+                ->middleware('permission:products.edit');
+        });
     });
 });

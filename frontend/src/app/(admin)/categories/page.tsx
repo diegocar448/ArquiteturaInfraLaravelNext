@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { CategoryFormDialog } from "@/components/categories/category-form-dialog";
 import { DeleteCategoryDialog } from "@/components/categories/delete-category-dialog";
+import { TenantRequiredAlert } from "@/components/tenant-required-alert";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -53,6 +54,8 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-4">
+      <TenantRequiredAlert resource="categorias" />
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Categorias</h1>
         <Button onClick={() => setCreateOpen(true)}>
