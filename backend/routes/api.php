@@ -33,5 +33,12 @@ Route::prefix('v1')->group(function () {
 
         // Roles CRUD
         Route::apiResource('roles', RoleController::class);
+
+        // ACL Sync
+        Route::get('permissions', [AclSyncController::class, 'listPermissions']);
+        Route::post('profiles/{profile}/permissions', [AclSyncController::class, 'syncProfilePermissions']);
+        Route::post('plans/{plan}/profiles', [AclSyncController::class, 'syncPlanProfiles']);
+        Route::post('roles/{role}/permissions', [AclSyncController::class, 'syncRolePermissions']);
+        Route::post('users/{user}/roles', [AclSyncController::class, 'syncUserRoles']);
     });
 });
