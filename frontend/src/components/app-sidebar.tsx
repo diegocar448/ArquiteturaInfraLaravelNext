@@ -12,6 +12,7 @@ import {
   Shield,
   UserCog,
   FolderTree,
+  ShoppingBasket,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,6 +34,7 @@ const menuItems = [
   { title: "Perfis", url: "/profiles", icon: Shield},
   { title: "Papeis", url: "/roles",  icon: UserCog },
   { title: "Categorias", url: "/categories", icon: FolderTree},
+  { title: "Produtos", url: "/products", icon: ShoppingBasket },
   { title: "Pedidos", url: "/orders", icon: ShoppingBag },
   { title: "Cardapio", url: "/products", icon: UtensilsCrossed },
   { title: "Clientes", url: "/customers", icon: Users },
