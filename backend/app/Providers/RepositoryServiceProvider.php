@@ -10,6 +10,8 @@ use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Eloquent\DetailPlanRepository;
 use App\Repositories\Eloquent\PlanRepository;
 use App\Repositories\Eloquent\ProfileRepository;
+use App\Repositories\Contracts\RoleRepositoryInterface;
+use App\Repositories\Eloquent\RoleRepository;
 use App\Repositories\Eloquent\TenantRepository;
 use App\Repositories\Eloquent\UserRepository;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +24,7 @@ class RepositoryServiceProvider extends ServiceProvider
         DetailPlanRepositoryInterface::class => DetailPlanRepository::class,
         TenantRepositoryInterface::class => TenantRepository::class,
         ProfileRepositoryInterface::class => ProfileRepository::class,
+        RoleRepositoryInterface::class => RoleRepository::class,
     ];
 
     public function register(): void

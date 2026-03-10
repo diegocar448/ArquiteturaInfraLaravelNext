@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DetailPlanController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\TenantController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,5 +30,8 @@ Route::prefix('v1')->group(function () {
 
         // Profiles CRUD
         Route::apiResource('profiles', ProfileController::class);
+
+        // Roles CRUD
+        Route::apiResource('roles', RoleController::class);
     });
 });
