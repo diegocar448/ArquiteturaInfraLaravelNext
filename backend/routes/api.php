@@ -102,5 +102,9 @@ Route::prefix('v1')->group(function () {
                 'update' => 'permission:products.edit',
                 'destroy' => 'permission:products.delete',
             ]);
+        
+        // Product ↔ Category sync
+        Route::post('products/{product}/categories', [ProductController::class, 'syncCategories'])
+            ->middleware('permission:products.edit');
     });
 });

@@ -15,6 +15,7 @@ class CategoryResource extends JsonResource
             'name' => $this->name,
             'url' => $this->url,
             'description' => $this->description,
+            'products' => ProductResource::collection($this->whenLoaded('products')),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

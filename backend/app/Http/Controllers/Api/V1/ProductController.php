@@ -14,6 +14,7 @@ use App\Actions\Product\CreateProductAction;
 use App\Actions\Product\UpdateProductAction;
 use App\Actions\Product\DeleteProductAction;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
@@ -102,6 +103,31 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Produto removido com sucesso.',
+        ]);
+    }
+
+
+
+    /**
+     * Sincronizar categorias do produto
+     *
+     * Substitui todas as categorias vinculadas a um produto pelos IDs informados.
+     * Requer permissao `products.edit`.
+     */
+    public function syncCategories(Request $request, int $product): JsonResponse
+    {
+        $request->validate([
+            'categories' => ['required', 'array'],
+            'categories.*' => ['integer', 'exists:categories,id'],
+        ]);
+
+        $product = \App\Models\Product::findOrFail($product);
+        $product->categories()->sync($request->categories);
+        $product->load('categories');
+
+        return response()->json([
+            'message' => 'Categorias do produto atualizadas.',
+            'data' => new ProductResource($product),
         ]);
     }
 }

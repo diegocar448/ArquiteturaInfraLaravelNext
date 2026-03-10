@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Observers\ProductObserver;
 use App\Traits\BelongsToTenant;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,5 +29,10 @@ class Product extends Model
         return [
             'price' => 'decimal:2',
         ];
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class);
     }
 }
