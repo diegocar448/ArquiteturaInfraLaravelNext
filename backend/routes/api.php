@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\AclSyncController;
+use App\Http\Controllers\Api\V1\CategoryController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -79,5 +80,16 @@ Route::prefix('v1')->group(function () {
             ->middleware('permission:roles.edit');
         Route::post('users/{user}/roles', [AclSyncController::class, 'syncUserRoles'])
             ->middleware('permission:users.edit');
+
+
+            // Categories CRUD
+        Route::apiResource('categories', CategoryController::class)
+            ->middleware([
+                'index' => 'permission:categories.view',
+                'show' => 'permission:categories.view',
+                'store' => 'permission:categories.create',
+                'update' => 'permission:categories.edit',
+                'destroy' => 'permission:categories.delete',
+            ]);
     });
 });
