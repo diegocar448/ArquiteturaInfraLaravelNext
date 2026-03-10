@@ -78,6 +78,7 @@ Este README e um tutorial progressivo. Cada fase documenta exatamente o que foi 
   - [Passo 4.14 - Frontend: pagina de Perfis (Profiles)](#passo-414---frontend-pagina-de-perfis-profiles)
   - [Passo 4.15 - Frontend: pagina de Papeis (Roles)](#passo-415---frontend-pagina-de-papeis-roles)
   - [Passo 4.16 - Verificacao end-to-end da Fase 4](#passo-416---verificacao-end-to-end-da-fase-4)
+  - [Passo 4.17 - Documentacao API interativa (OpenAPI + Scramble)](#passo-417---documentacao-api-interativa-openapi--scramble)
 
 ---
 
@@ -10239,7 +10240,7 @@ Se o gerente conseguir acessar `/plans`, verifique:
 
 ### Tipos
 
-Edite `frontend/src/types/plan.ts` e adicione os novos tipos (ou crie um arquivo separado `frontend/src/types/acl.ts`):
+Os tipos de ACL ficam em um arquivo separado do `plan.ts` para manter a organizacao por dominio. O `plan.ts` nao precisa ser alterado.
 
 Crie `frontend/src/types/acl.ts`:
 
@@ -11253,40 +11254,321 @@ frontend/
 - Frontend: Checkbox grid para gerenciar permissoes
 - Agrupamento de dados por prefixo (`plans.view` → grupo `plans`)
 
-### Documentacao da API (Swagger/OpenAPI)
+## Passo 4.17 - Documentacao API interativa (OpenAPI + Scramble)
 
-A API possui documentacao interativa gerada automaticamente pelo [Scramble](https://scramble.dedoc.co/).
+Ate agora testamos a API via `curl`. Funciona, mas tem problemas:
+- Precisa decorar URLs, headers e payloads
+- Nao tem autocomplete nem validacao visual
+- Dificil compartilhar com outros devs ou com o frontend
 
-**Acessar:** [http://localhost/docs/api](http://localhost/docs/api)
+A solucao e **documentacao interativa**: uma pagina web que lista todos os endpoints, mostra os schemas de request/response, e permite testar direto no navegador.
 
-A documentacao inclui:
-- Todos os endpoints organizados por tags (Auth, Planos, Tenants, Perfis, Papeis, ACL)
-- Schemas de request/response gerados a partir dos FormRequests e Resources
-- Autenticacao JWT Bearer configurada (botao "Authorize" no topo)
-- Botao "Try It" para testar endpoints direto no navegador
+### Conceito: OpenAPI (ex-Swagger)
 
-**Como usar:**
-1. Acesse `http://localhost/docs/api`
-2. Clique em **POST /v1/auth/login** e use as credenciais `admin@orderly.com` / `password`
-3. Copie o `access_token` retornado
-4. Clique no botao **Authorize** (cadeado) e cole o token
-5. Agora voce pode testar todos os endpoints protegidos
-
-**Regenerar spec OpenAPI (JSON):**
-```bash
-# O JSON e gerado dinamicamente em:
-curl http://localhost/docs/api.json | python3 -m json.tool
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OpenAPI Ecosystem                         │
+│                                                             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │  OpenAPI Spec │    │  Swagger UI  │    │  Stoplight   │  │
+│  │  (o padrao)   │    │  (uma UI)    │    │  Elements    │  │
+│  │              │    │              │    │  (outra UI)  │  │
+│  │  JSON/YAML   │───▶│  Interface   │    │  Interface   │  │
+│  │  que descreve│    │  classica    │    │  moderna     │  │
+│  │  sua API     │───▶│  (verde)     │    │  (sidebar)   │  │
+│  └──────────────┘    └──────────────┘    └──────────────┘  │
+│         ▲                                       ▲           │
+│         │                                       │           │
+│  ┌──────────────┐                               │           │
+│  │  Scramble    │  Gera a spec automaticamente  │           │
+│  │  (Laravel)   │  e renderiza com Stoplight ───┘           │
+│  └──────────────┘                                           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Arquivos envolvidos:**
+- **OpenAPI** = o **padrao/especificacao** (JSON/YAML descrevendo endpoints, schemas, auth)
+- **Swagger UI** = uma interface visual para renderizar a spec (a classica, verde/preto)
+- **Stoplight Elements** = outra interface visual (mais moderna, com sidebar responsiva e tema dark)
+- **Scramble** = pacote Laravel que **gera a spec automaticamente** a partir do codigo (Controllers, FormRequests, Resources) e renderiza com Stoplight Elements
+
+**Por que Scramble e nao l5-swagger?**
+- l5-swagger exige annotations manuais (`@OA\Get`, `@OA\Post`) em cada controller — verboso e propenso a ficar desatualizado
+- Scramble analisa o **codigo real** (return types, FormRequests, Resources) e gera a spec sem annotations
+- Menos codigo = menos manutencao = doc sempre sincronizada com a API
+
+### 1. Publicar configuracao do Scramble
+
+O pacote `dedoc/scramble` ja esta no `composer.json` desde o Passo 1.11. Publique o arquivo de configuracao:
+
+```bash
+docker compose exec backend php artisan vendor:publish \
+  --provider="Dedoc\Scramble\ScrambleServiceProvider" \
+  --tag=scramble-config
+```
+
+### 2. Configurar o Scramble
+
+Edite `backend/config/scramble.php`:
+
+```php
+<?php
+
+return [
+    'api_path' => 'api',
+    'api_domain' => null,
+    'export_path' => 'api.json',
+
+    'info' => [
+        'version' => env('API_VERSION', '1.0.0'),
+        'description' => <<<'MARKDOWN'
+API REST do **Orderly** — plataforma SaaS multi-tenant para gestao de restaurantes.
+
+## Autenticacao
+Todas as rotas protegidas exigem um token JWT no header `Authorization: Bearer {token}`.
+Use o endpoint **POST /api/v1/auth/login** para obter o token.
+
+## Multi-tenancy
+O `tenant_id` e extraido automaticamente do token JWT. Usuarios comuns so acessam dados do seu tenant.
+Super-admins (sem tenant) acessam dados de todos os tenants.
+
+## ACL (Controle de Acesso)
+O sistema usa **dupla camada de permissoes**:
+- **Plan → Profile → Permission**: define o que o plano do tenant permite
+- **User → Role → Permission**: define o que o usuario pode fazer
+
+Uma acao so e permitida se existir nas **duas camadas** (intersecao).
+MARKDOWN,
+    ],
+
+    'ui' => [
+        'title' => 'Orderly API',
+        'theme' => 'dark',
+        'hide_try_it' => false,
+        'hide_schemas' => false,
+        'logo' => '',
+        'try_it_credentials_policy' => 'include',
+        'layout' => 'responsive',
+    ],
+
+    'servers' => null,
+
+    'middleware' => [
+        'web',
+        // RestrictedDocsAccess removido para permitir acesso em dev
+    ],
+
+    'extensions' => [],
+];
+```
+
+**Pontos importantes:**
+- `theme => 'dark'` — tema escuro para a documentacao
+- `hide_try_it => false` — mantem o botao "Try It" para testar endpoints no navegador
+- `layout => 'responsive'` — sidebar que colapsa em telas pequenas
+- `RestrictedDocsAccess` removido — em producao, recoloque para exigir autenticacao
+- A `description` usa Markdown — aparece na home da documentacao explicando autenticacao, tenancy e ACL
+
+### 3. Configurar seguranca JWT no AppServiceProvider
+
+O Scramble precisa saber que a API usa JWT Bearer. Edite `backend/app/Providers/AppServiceProvider.php`:
+
+```php
+<?php
+
+namespace App\Providers;
+
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Illuminate\Support\ServiceProvider;
+
+class AppServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        //
+    }
+
+    public function boot(): void
+    {
+        Scramble::afterOpenApiGenerated(function (OpenApi $openApi) {
+            $openApi->secure(
+                SecurityScheme::http('bearer', 'JWT'),
+            );
+        });
+    }
+}
+```
+
+**O que isso faz?**
+Adiciona o security scheme `Bearer` na spec OpenAPI. Na interface, isso habilita o botao "Authorize" onde voce cola o JWT token. Todos os endpoints protegidos enviarao o header `Authorization: Bearer {token}` automaticamente.
+
+### 4. Adicionar PHPDoc tags nos controllers
+
+O Scramble le o codigo automaticamente, mas PHPDoc tags melhoram a organizacao. Adicione `@tags` na classe e descricoes nos metodos:
+
+**Exemplo — `AuthController.php`:**
+```php
+/**
+ * @tags Auth
+ */
+class AuthController extends Controller
+{
+    /**
+     * Login
+     *
+     * Autentica o usuario e retorna um token JWT.
+     *
+     * @unauthenticated
+     */
+    public function login(LoginRequest $request, LoginAction $action): JsonResponse
+    // ...
+```
+
+**Exemplo — `PlanController.php`:**
+```php
+/**
+ * @tags Planos
+ */
+class PlanController extends Controller
+{
+    /**
+     * Listar planos
+     *
+     * Retorna todos os planos com paginacao. Requer permissao `plans.view`.
+     */
+    public function index(ListPlansAction $action): AnonymousResourceCollection
+    // ...
+```
+
+**Tags usadas em cada controller:**
+
+| Controller | Tag | Descricao |
+|---|---|---|
+| `AuthController` | Auth | Login, logout, refresh, me |
+| `PlanController` | Planos | CRUD de planos de assinatura |
+| `DetailPlanController` | Detalhes do Plano | CRUD de detalhes (nested em planos) |
+| `TenantController` | Tenants | CRUD de tenants (restaurantes) |
+| `ProfileController` | Perfis (Profiles) | CRUD de perfis de acesso |
+| `RoleController` | Papeis (Roles) | CRUD de papeis do tenant |
+| `AclSyncController` | ACL (Controle de Acesso) | Sync de permissoes/perfis/roles |
+
+**Annotations especiais do Scramble:**
+- `@tags NomeDoGrupo` — agrupa endpoints na sidebar
+- `@unauthenticated` — marca endpoint como publico (sem cadeado)
+- O restante (schemas, validacoes, responses) e inferido automaticamente dos `FormRequest`, `Resource` e return types
+
+### 5. Rotear /docs no Nginx
+
+O Scramble serve a documentacao em `/docs/api` (rota web do Laravel). O Nginx precisa rotear isso para o PHP-FPM.
+
+Edite `docker/nginx/default.conf` e adicione apos o bloco `/api`:
+
+```nginx
+    # --- API Routes -> Laravel ---
+    location /api {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # --- API Documentation (Scramble/Swagger) -> Laravel ---
+    location /docs {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+```
+
+Reinicie o Nginx:
+
+```bash
+docker compose rm -f nginx && docker compose up -d nginx
+```
+
+> **Nota WSL2:** Se `docker restart orderly-nginx` falhar com erro de bind mount, use `docker compose rm -f nginx && docker compose up -d nginx` que recria o container.
+
+### 6. Limpar caches e testar
+
+```bash
+# Limpar caches do Laravel
+docker compose exec backend php artisan route:clear
+docker compose exec backend php artisan config:clear
+
+# Testar se a documentacao esta acessivel
+curl -s -o /dev/null -w "%{http_code}" http://localhost/docs/api
+# 200
+
+# Ver a spec OpenAPI em JSON
+curl -s http://localhost/docs/api.json | python3 -m json.tool | head -20
+```
+
+### 7. Usar a documentacao
+
+1. Acesse **http://localhost/docs/api** no navegador
+2. Na sidebar esquerda, veja os endpoints agrupados por tags
+3. Clique em **POST /v1/auth/login** → clique em **Try It**
+4. Preencha o body com `{"email": "admin@orderly.com", "password": "password"}`
+5. Clique **Send** — copie o `access_token` do response
+6. Clique no botao **Authorize** (cadeado no topo) e cole: `Bearer {seu_token}`
+7. Agora todos os endpoints protegidos enviam o token automaticamente
+
+### Como o Scramble gera a documentacao automaticamente
+
+```
+┌──────────────────┐     ┌────────────────────┐     ┌─────────────────┐
+│  FormRequest     │     │  Controller         │     │  Resource       │
+│                  │     │                     │     │                 │
+│  StorePlanRequest│────▶│  PlanController     │────▶│  PlanResource   │
+│  - name: required│     │  - store()          │     │  - id           │
+│  - price: numeric│     │  - returns 201      │     │  - name         │
+│  - description   │     │  - returns 404      │     │  - price        │
+└──────────────────┘     └────────────────────┘     └─────────────────┘
+         │                        │                          │
+         ▼                        ▼                          ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Scramble (analise automatica)                     │
+│                                                                     │
+│  Le o codigo PHP via reflection + analise estatica e gera:         │
+│  - Request body schema (dos FormRequest rules)                     │
+│  - Response schema (dos Resource toArray)                          │
+│  - Path parameters (dos type hints int $plan)                      │
+│  - HTTP status codes (dos return response()->json(..., 201))       │
+│  - Auth requirements (dos middleware auth:api)                     │
+└─────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     OpenAPI 3.1 JSON Spec                           │
+│                     /docs/api.json                                  │
+│                                                                     │
+│  Renderizado pelo Stoplight Elements em /docs/api                  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Isso significa:** quando voce adicionar um novo controller com FormRequest e Resource, o Scramble documenta automaticamente. Zero annotations extras.
+
+### Arquivos criados/modificados
+
 ```
 backend/
-├── config/scramble.php          # Configuracao do Scramble (titulo, descricao, tema)
-├── app/Providers/AppServiceProvider.php  # Security scheme JWT Bearer
-└── app/Http/Controllers/Api/V1/ # PHPDoc @tags e descricoes nos controllers
+├── config/scramble.php                        # (novo) Configuracao do Scramble
+├── app/Providers/AppServiceProvider.php        # (modificado) Security scheme JWT
+└── app/Http/Controllers/Api/V1/
+    ├── Auth/AuthController.php                # (modificado) @tags Auth
+    ├── PlanController.php                     # (modificado) @tags Planos
+    ├── DetailPlanController.php               # (modificado) @tags Detalhes do Plano
+    ├── TenantController.php                   # (modificado) @tags Tenants
+    ├── ProfileController.php                  # (modificado) @tags Perfis (Profiles)
+    ├── RoleController.php                     # (modificado) @tags Papeis (Roles)
+    └── AclSyncController.php                  # (modificado) @tags ACL (Controle de Acesso)
 docker/
-└── nginx/default.conf           # Rota /docs -> PHP-FPM
+└── nginx/default.conf                         # (modificado) Rota /docs -> PHP-FPM
 ```
+
+**Conceitos aprendidos:**
+- OpenAPI e uma **especificacao** (JSON/YAML), nao uma ferramenta
+- Swagger UI e Stoplight Elements sao **interfaces visuais** que renderizam a mesma spec
+- Scramble gera a spec **automaticamente** a partir do codigo Laravel (sem annotations)
+- PHPDoc `@tags` organiza endpoints em grupos na sidebar
+- `@unauthenticated` marca endpoints publicos
+- A spec e servida como JSON em `/docs/api.json` (pode ser importada no Postman, Insomnia, etc.)
 
 **Proximo:** Fase 5 - Catalogo: Categorias + Produtos
 
