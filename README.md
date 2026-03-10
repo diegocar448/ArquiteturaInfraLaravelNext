@@ -3489,15 +3489,29 @@ Crie o route group `(admin)` para agrupar paginas que compartilham o layout com 
 Crie `frontend/src/app/(admin)/layout.tsx`:
 
 ```tsx
+"use client";
+
+import { useEffect } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppHeader } from "@/components/app-header";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const fetchUser = useAuthStore((s) => s.fetchUser);
+
+  useEffect(() => {
+    if (token && !user) {
+      fetchUser();
+    }
+  }, [token, user, fetchUser]);
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -3509,6 +3523,8 @@ export default function AdminLayout({
   );
 }
 ```
+
+> **Por que `"use client"` e `fetchUser()`?** O Zustand so persiste o `token` no localStorage (via `partialize`). Ao dar F5, o `user` e `null` ate que `fetchUser()` recarregue os dados via API. Sem isso, componentes como a sidebar condicional (Passo 5.12) nao renderizam os grupos corretos.
 
 Crie `frontend/src/app/(admin)/dashboard/page.tsx`:
 
@@ -3797,7 +3813,7 @@ frontend/
 │   │   ├── page.tsx (modificado - redirect)
 │   │   ├── login/page.tsx
 │   │   └── (admin)/
-│   │       ├── layout.tsx
+│   │       ├── layout.tsx (client component — fetchUser on hydration)
 │   │       └── dashboard/page.tsx
 │   ├── components/
 │   │   ├── ui/ (gerado pelo shadcn)
