@@ -12350,7 +12350,6 @@ class CategoryResource extends JsonResource
             'name' => $this->name,
             'url' => $this->url,
             'description' => $this->description,
-            'products' => ProductResource::collection($this->whenLoaded('products')),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];
@@ -12358,7 +12357,7 @@ class CategoryResource extends JsonResource
 }
 ```
 
-> **Nota:** `ProductResource` sera criado no Passo 5.8. O `whenLoaded('products')` so sera utilizado apos o Passo 5.9 (pivot). Por enquanto, nao carrega produtos.
+> **Nota:** No Passo 5.9 (pivot), adicionaremos a linha `'products' => ProductResource::collection($this->whenLoaded('products'))` neste Resource. Por enquanto, sem o `ProductResource` criado, incluir essa linha causaria erro.
 
 Crie `backend/app/Http/Controllers/Api/V1/CategoryController.php`:
 
@@ -13606,6 +13605,26 @@ class Product extends Model
     }
 }
 ```
+
+Agora atualize os Resources para incluir os relacionamentos.
+
+Edite `backend/app/Http/Resources/CategoryResource.php` — adicione a linha `products` no array de retorno:
+
+```php
+'description' => $this->description,
+'products' => ProductResource::collection($this->whenLoaded('products')),
+'created_at' => $this->created_at->toISOString(),
+```
+
+Edite `backend/app/Http/Resources/ProductResource.php` — adicione a linha `categories` no array de retorno:
+
+```php
+'description' => $this->description,
+'categories' => CategoryResource::collection($this->whenLoaded('categories')),
+'created_at' => $this->created_at->toISOString(),
+```
+
+> **Por que so agora?** No Passo 5.4, o `CategoryResource` foi criado sem a linha `products` porque o `ProductResource` ainda nao existia. Agora que ambos os Resources existem (Passo 5.8), podemos adicionar as referencias cruzadas. O `whenLoaded()` garante que so serializa quando o relacionamento for explicitamente carregado com `->load()`.
 
 Agora adicione um endpoint de sync para vincular/desvincular categorias de um produto. Edite `backend/app/Http/Controllers/Api/V1/ProductController.php` — adicione o metodo:
 
