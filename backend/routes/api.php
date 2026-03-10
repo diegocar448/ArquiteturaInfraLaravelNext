@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AclSyncController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\DetailPlanController;
 use App\Http\Controllers\Api\V1\PlanController;
