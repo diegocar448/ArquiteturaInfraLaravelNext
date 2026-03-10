@@ -16,6 +16,8 @@ use App\Repositories\Eloquent\TenantRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Repositories\Contracts\CategoryRepositoryInterface;
 use App\Repositories\Eloquent\CategoryRepository;
+use App\Repositories\Contracts\ProductRepositoryInterface;
+use App\Repositories\Eloquent\ProductRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -28,6 +30,7 @@ class RepositoryServiceProvider extends ServiceProvider
         ProfileRepositoryInterface::class => ProfileRepository::class,
         RoleRepositoryInterface::class => RoleRepository::class,
         CategoryRepositoryInterface::class => CategoryRepository::class,
+        ProductRepositoryInterface::class => ProductRepository::class,
     ];
 
     public function register(): void
