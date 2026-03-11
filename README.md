@@ -11421,6 +11421,7 @@ namespace App\Providers;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Dedoc\Scramble\Support\Generator\Types\IntegerType;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11436,13 +11437,30 @@ class AppServiceProvider extends ServiceProvider
             $openApi->secure(
                 SecurityScheme::http('bearer', 'JWT'),
             );
+
+            // Adicionar example=1 em todos os path parameters integer
+            // para evitar que o Stoplight UI gere UUIDs como exemplo
+            foreach ($openApi->paths as $path) {
+                foreach ($path->operations as $operation) {
+                    foreach ($operation->parameters as $parameter) {
+                        if (
+                            $parameter->in === 'path'
+                            && $parameter->schema
+                            && $parameter->schema->type instanceof IntegerType
+                        ) {
+                            $parameter->example(1);
+                        }
+                    }
+                }
+            }
         });
     }
 }
 ```
 
 **O que isso faz?**
-Adiciona o security scheme `Bearer` na spec OpenAPI. Na interface, isso habilita o botao "Authorize" onde voce cola o JWT token. Todos os endpoints protegidos enviarao o header `Authorization: Bearer {token}` automaticamente.
+1. Adiciona o security scheme `Bearer` na spec OpenAPI. Na interface, isso habilita o botao "Authorize" onde voce cola o JWT token. Todos os endpoints protegidos enviarao o header `Authorization: Bearer {token}` automaticamente.
+2. Forca `example: 1` em todos os path parameters do tipo integer. Sem isso, o Stoplight UI gera valores aleatorios (incluindo UUIDs) que causam `TypeError` nos controllers que esperam `int`.
 
 ### 4. Adicionar PHPDoc tags nos controllers
 
