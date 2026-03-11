@@ -22,3 +22,18 @@ export interface Product {
   created_at: string;
   updated_at: string;
 }
+
+export interface Table {
+  id: number;
+  uuid: string;
+  identify: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableQrCode {
+  table: Table;
+  qrcode: string;
+  url: string;
+}
