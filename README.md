@@ -15756,14 +15756,23 @@ final class TableRepository implements TableRepositoryInterface
 
 ### Registrar no Service Provider
 
-Adicione o binding em `backend/app/Providers/RepositoryServiceProvider.php`:
+Adicione o binding em `backend/app/Providers/RepositoryServiceProvider.php`.
+
+1. Adicione os imports no topo do arquivo:
 
 ```php
 use App\Repositories\Contracts\TableRepositoryInterface;
 use App\Repositories\Eloquent\TableRepository;
+```
 
-// No metodo register():
-$this->app->bind(TableRepositoryInterface::class, TableRepository::class);
+2. Adicione a entrada no array `$repositories`:
+
+```php
+private array $repositories = [
+    // ... bindings existentes ...
+    ProductRepositoryInterface::class => ProductRepository::class,
+    TableRepositoryInterface::class => TableRepository::class,    // ← adicionar
+];
 ```
 
 ### DTOs
