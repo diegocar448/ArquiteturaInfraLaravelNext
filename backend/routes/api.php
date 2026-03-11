@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\TableController;
 use App\Http\Controllers\Api\V1\TenantController;
 use Illuminate\Support\Facades\Route;
 
@@ -108,6 +109,16 @@ Route::prefix('v1')->group(function () {
             // Product ↔ Category sync
             Route::post('products/{product}/categories', [ProductController::class, 'syncCategories'])
                 ->middleware('permission:products.edit');
+
+            // Tables CRUD
+            Route::apiResource('tables', TableController::class)
+                ->middleware([
+                    'index' => 'permission:tables.view',
+                    'show' => 'permission:tables.view',
+                    'store' => 'permission:tables.create',
+                    'update' => 'permission:tables.edit',
+                    'destroy' => 'permission:tables.delete',
+                ]);
         });
     });
 });
