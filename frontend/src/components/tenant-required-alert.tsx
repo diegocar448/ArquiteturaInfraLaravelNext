@@ -14,13 +14,13 @@ export function TenantRequiredAlert({ resource }: TenantRequiredAlertProps) {
   if (!user || user.tenant_id) return null;
 
   return (
-    <Alert variant="destructive">
+    <Alert>
       <ShieldAlert className="h-4 w-4" />
-      <AlertTitle>Tenant necessario</AlertTitle>
+      <AlertTitle>Modo visualizacao</AlertTitle>
       <AlertDescription>
-        Voce esta logado como super-admin sem tenant vinculado. Para gerenciar{" "}
-        {resource}, faca login com um usuario que pertenca a um tenant (ex:{" "}
-        <strong>gerente@demo.com</strong>).
+        Voce esta logado como super-admin e pode visualizar {resource} de todos
+        os tenants. Para criar ou editar, faca login com um usuario vinculado a
+        um tenant (ex: <strong>gerente@demo.com</strong>).
       </AlertDescription>
     </Alert>
   );

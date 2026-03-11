@@ -25,7 +25,7 @@ class IdentifyTenant
             }
 
             app()->instance('currentTenant', $tenant);
-        } elseif ($mode === 'required') {
+        } elseif ($mode === 'required' && !$user?->isSuperAdmin()) {
             return response()->json([
                 'message' => 'Esta acao requer um usuario vinculado a um tenant.',
             ], 403);

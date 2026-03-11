@@ -53,6 +53,7 @@ export function AppSidebar() {
 
   const isSuperAdmin = user?.is_super_admin ?? false;
   const hasTenant = !!user?.tenant_id;
+  const showTenantItems = hasTenant || isSuperAdmin;
 
   return (
     <Sidebar>
@@ -99,7 +100,7 @@ export function AppSidebar() {
           </>
         )}
 
-        {hasTenant && (
+        {showTenantItems && (
           <>
             <SidebarSeparator />
             <SidebarGroup>

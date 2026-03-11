@@ -38,15 +38,15 @@ class RoleSeeder extends Seeder
 
         // ─── Vincular Permissoes ─────────────────────
 
-        // Administrador: todas as permissoes operacionais (sem plans/tenants/profiles)
+        // Administrador: todas as permissoes operacionais (sem plans/tenants)
+        // Inclui profiles.* e roles.* para gerenciar ACL do tenant
         $adminPermissions = Permission::whereNotIn('name', [
             'plans.view', 'plans.create', 'plans.edit', 'plans.delete',
             'tenants.view', 'tenants.create', 'tenants.edit', 'tenants.delete',
-            'profiles.view', 'profiles.create', 'profiles.edit', 'profiles.delete',
         ])->pluck('id')->toArray();
         $adminRole->permissions()->sync($adminPermissions);
 
-        // Gerente: catalogo + pedidos + mesas + usuarios (sem roles)
+        // Gerente: catalogo + pedidos + mesas + usuarios (sem roles/profiles)
         $gerentePermissions = Permission::whereIn('name', [
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
             'products.view', 'products.create', 'products.edit', 'products.delete',
