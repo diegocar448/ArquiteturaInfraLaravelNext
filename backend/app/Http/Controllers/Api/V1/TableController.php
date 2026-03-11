@@ -13,6 +13,7 @@ use App\Actions\Table\ShowTableAction;
 use App\Actions\Table\CreateTableAction;
 use App\Actions\Table\UpdateTableAction;
 use App\Actions\Table\DeleteTableAction;
+use App\Actions\Table\GenerateQrCodeAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -101,6 +102,30 @@ class TableController extends Controller
 
         return response()->json([
             'message' => 'Mesa removida com sucesso.',
+        ]);
+    }
+
+    /**
+     * QR Code da mesa
+     *
+     * Gera e retorna o QR Code da mesa como imagem base64.
+     * O QR Code aponta para a URL publica do cardapio com o UUID da mesa.
+     * Requer permissao `tables.view`.
+     */
+    public function qrcode(int $table, GenerateQrCodeAction $action): JsonResponse
+    {
+        $result = $action->execute($table);
+
+        if (!$result) {
+            return response()->json(['message' => 'Mesa nao encontrada.'], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'table' => new TableResource($result['table']),
+                'qrcode' => $result['qrcode'],
+                'url' => $result['url'],
+            ],
         ]);
     }
 }

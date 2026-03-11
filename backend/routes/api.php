@@ -119,6 +119,10 @@ Route::prefix('v1')->group(function () {
                     'update' => 'permission:tables.edit',
                     'destroy' => 'permission:tables.delete',
                 ]);
+
+            // Table QR Code
+            Route::get('tables/{table}/qrcode', [TableController::class, 'qrcode'])
+                ->middleware('permission:tables.view');
         });
     });
 });
