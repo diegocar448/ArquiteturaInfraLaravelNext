@@ -1,0 +1,152 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orderly
+          POSTGRES_USER: orderly
+          POSTGRES_PASSWORD: orderly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U orderly"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---- Backend setup ----
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, mbstring, xml, bcmath
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Setup backend
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan jwt:secret --force
+          php artisan migrate --force
+          php artisan db:seed --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: orderly
+          DB_USERNAME: orderly
+          DB_PASSWORD: orderly
+          REDIS_HOST: localhost
+
+      - name: Start backend server
+        working-directory: backend
+        run: php artisan serve --host=0.0.0.0 --port=8000 &
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_DATABASE: orderly
+          DB_USERNAME: orderly
+          DB_PASSWORD: orderly
+          REDIS_HOST: localhost
+
+      # ---- Frontend setup ----
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api
+          INTERNAL_API_URL: http://localhost:8000/api
+
+      - name: Start frontend server
+        working-directory: frontend
+        run: npm start -- -p 3000 &
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api
+          INTERNAL_API_URL: http://localhost:8000/api
+
+      - name: Wait for servers
+        run: |
+          echo "Waiting for backend..."
+          timeout 30 bash -c 'until curl -s http://localhost:8000/api/v1/auth/login > /dev/null 2>&1; do sleep 1; done' || true
+          echo "Waiting for frontend..."
+          timeout 30 bash -c 'until curl -s http://localhost:3000 > /dev/null 2>&1; do sleep 1; done' || true
+          echo "Servers ready!"
+
+      # ---- Run E2E tests ----
+      - name: Run Playwright tests
+        working-directory: frontend
+        run: npx playwright test
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: frontend/test-results/
+          retention-days: 7
