@@ -17965,6 +17965,36 @@ final class DeleteOrderAction
 
 ### FormRequests
 
+Crie `backend/app/Http/Requests/Order/ListOrdersRequest.php`:
+
+```php
+<?php
+
+namespace App\Http\Requests\Order;
+
+use App\Models\Order;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class ListOrdersRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'status' => ['nullable', 'string', Rule::in(Order::ALL_STATUSES)],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ];
+    }
+}
+```
+
+> **Por que um FormRequest para listagem?** O Scramble gera automaticamente os campos de query parameter no Swagger a partir das regras de validacao do FormRequest. Sem ele, os campos `status` e `per_page` nao apareceriam na documentacao interativa.
+
 Crie `backend/app/Http/Requests/Order/StoreOrderRequest.php`:
 
 ```php
@@ -18096,6 +18126,7 @@ Crie `backend/app/Http/Controllers/Api/V1/OrderController.php`:
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Order\ListOrdersRequest;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
@@ -18121,11 +18152,11 @@ class OrderController extends Controller
      * Aceita query parameter `status` para filtrar (ex: `?status=open`).
      * Requer permissao `orders.view`.
      */
-    public function index(ListOrdersAction $action): AnonymousResourceCollection
+    public function index(ListOrdersRequest $request, ListOrdersAction $action): AnonymousResourceCollection
     {
         $orders = $action->execute(
-            perPage: request()->integer('per_page', 15),
-            status: request()->query('status'),
+            perPage: $request->integer('per_page', 15),
+            status: $request->validated('status'),
         );
 
         return OrderResource::collection($orders);
@@ -19435,6 +19466,7 @@ backend/
 │   ├── Http/
 │   │   ├── Controllers/Api/V1/OrderController.php
 │   │   ├── Requests/Order/
+│   │   │   ├── ListOrdersRequest.php
 │   │   │   ├── StoreOrderRequest.php
 │   │   │   └── UpdateOrderStatusRequest.php
 │   │   └── Resources/OrderResource.php
