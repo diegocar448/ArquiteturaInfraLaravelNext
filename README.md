@@ -115,6 +115,18 @@ Este README e um tutorial progressivo. Cada fase documenta exatamente o que foi 
   - [Passo 7.8 - Frontend: pagina de Pedidos (listagem + status)](#passo-78---frontend-pagina-de-pedidos-listagem--status)
   - [Passo 7.9 - Frontend: dialog de criacao de pedido](#passo-79---frontend-dialog-de-criacao-de-pedido)
   - [Passo 7.10 - Verificacao end-to-end da Fase 7](#passo-710---verificacao-end-to-end-da-fase-7)
+- [Fase 8 - Autenticacao de Clientes + Avaliacoes](#fase-8---autenticacao-de-clientes--avaliacoes)
+  - [Passo 8.1 - Conceito: Clientes vs Usuarios e Avaliacoes](#passo-81---conceito-clientes-vs-usuarios-e-avaliacoes)
+  - [Passo 8.2 - Migration: tabela clients + guard JWT](#passo-82---migration-tabela-clients--guard-jwt)
+  - [Passo 8.3 - Client Model + Observer + JWTSubject](#passo-83---client-model--observer--jwtsubject)
+  - [Passo 8.4 - Client Auth Controller + Routes](#passo-84---client-auth-controller--routes)
+  - [Passo 8.5 - Migration: FK orders.client_id + tabela order_evaluations](#passo-85---migration-fk-ordersclient_id--tabela-order_evaluations)
+  - [Passo 8.6 - Evaluation Model + Repository + Actions](#passo-86---evaluation-model--repository--actions)
+  - [Passo 8.7 - Evaluation Controller + Routes + FormRequests + Resource](#passo-87---evaluation-controller--routes--formrequests--resource)
+  - [Passo 8.8 - Seeders + teste da API](#passo-88---seeders--teste-da-api)
+  - [Passo 8.9 - Frontend: tipos TypeScript + servicos](#passo-89---frontend-tipos-typescript--servicos)
+  - [Passo 8.10 - Frontend: pagina de Avaliacoes (admin)](#passo-810---frontend-pagina-de-avaliacoes-admin)
+  - [Passo 8.11 - Verificacao end-to-end da Fase 8](#passo-811---verificacao-end-to-end-da-fase-8)
 
 ---
 
@@ -173,8 +185,8 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [x] Catalogo: Categories + Products (CRUD, tenant-scoped)
 - [x] Mesas com QR Code
 - [x] Sistema de Pedidos
-- [ ] Autenticacao de Clientes (JWT)
-- [ ] Avaliacoes de Pedidos
+- [x] Autenticacao de Clientes (JWT)
+- [x] Avaliacoes de Pedidos
 - [ ] Dashboard com metricas
 - [ ] Landing page publica (SSR)
 - [ ] Testes completos (Unit, Integration, E2E)
@@ -19578,6 +19590,1609 @@ frontend/src/
 - **FormRequest para query params** — o Scramble gera campos no Swagger a partir das `rules()` do FormRequest (nao suporta `@queryParam`)
 
 **Proximo:** Fase 8 - Autenticacao de Clientes + Avaliacoes
+
+---
+
+# Fase 8 - Autenticacao de Clientes + Avaliacoes
+
+Nesta fase vamos implementar dois subsistemas interligados:
+1. **Autenticacao de Clientes** — sistema de login separado dos usuarios admin, com guard JWT dedicado
+2. **Avaliacoes de Pedidos** — clientes podem avaliar pedidos entregues com estrelas (1-5) e comentario
+
+**O que vamos construir:**
+- Tabela `clients` com autenticacao JWT independente (guard `client`)
+- Endpoints publicos de registro e login para clientes
+- Migration para FK `orders.client_id` + tabela `order_evaluations`
+- CRUD de avaliacoes (apenas clientes autenticados criam; admin visualiza)
+- Painel admin para visualizar avaliacoes recebidas
+
+**Dependencia:** Fase 7 concluida (Sistema de Pedidos).
+
+---
+
+## Passo 8.1 - Conceito: Clientes vs Usuarios e Avaliacoes
+
+### Por que dois modelos de autenticacao?
+
+O sistema tem dois tipos de "usuarios":
+
+| | **User** (Admin) | **Client** (Cliente) |
+|---|---|---|
+| **Quem e** | Dono do restaurante, gerente, garcom | Cliente final que faz pedidos |
+| **Tabela** | `users` | `clients` |
+| **Guard JWT** | `api` | `client` |
+| **Tem tenant?** | Sim (`tenant_id`) | Nao (interage com qualquer tenant) |
+| **Sidebar** | Sim (painel admin) | Nao (app publico futuro) |
+| **Permissoes** | ACL dupla camada | Nenhuma (acesso limitado por design) |
+
+> **Por que nao usar a mesma tabela?** Clientes nao tem `tenant_id`, nao tem roles/permissions, e o fluxo de autenticacao e diferente (registro publico vs convite). Separar evita complexidade desnecessaria e mantem o Model `User` focado no admin.
+
+### Guard separado
+
+O Laravel permite multiplos guards JWT. Cada guard usa um provider (model) diferente:
+
+```
+Guard "api"    → Provider "users"    → Model User::class
+Guard "client" → Provider "clients"  → Model Client::class
+```
+
+### Avaliacoes
+
+Uma avaliacao vincula um **cliente** a um **pedido entregue**:
+
+| Campo | Tipo | Descricao |
+|---|---|---|
+| `id` | bigint | PK |
+| `order_id` | FK → orders | Pedido avaliado |
+| `client_id` | FK → clients | Cliente que avaliou |
+| `stars` | tinyint (1-5) | Nota em estrelas |
+| `comment` | text? | Comentario opcional |
+
+Regras de negocio:
+- Apenas pedidos com status `delivered` podem ser avaliados
+- Cada cliente pode avaliar um pedido **apenas uma vez** (unique: `order_id` + `client_id`)
+- Apenas o cliente vinculado ao pedido (via `orders.client_id`) pode avaliar
+
+---
+
+## Passo 8.2 - Migration: tabela clients + guard JWT
+
+### Migration clients
+
+Crie `backend/database/migrations/0001_01_02_000012_create_clients_table.php`:
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('clients', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('uuid')->unique();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('clients');
+    }
+};
+```
+
+### Configurar guard JWT para clients
+
+Edite `backend/config/auth.php` e adicione o guard `client` e o provider `clients`:
+
+```php
+<?php
+
+return [
+    'defaults' => [
+        'guard' => 'api',
+        'passwords' => 'users',
+    ],
+
+    'guards' => [
+        'web' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'api' => [
+            'driver' => 'jwt',
+            'provider' => 'users',
+        ],
+        'client' => [
+            'driver' => 'jwt',
+            'provider' => 'clients',
+        ],
+    ],
+
+    'providers' => [
+        'users' => [
+            'driver' => 'eloquent',
+            'model' => env('AUTH_MODEL', App\Models\User::class),
+        ],
+        'clients' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Client::class,
+        ],
+    ],
+
+    'passwords' => [
+        'users' => [
+            'provider' => 'users',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+    ],
+
+    'password_timeout' => 10800,
+];
+```
+
+> **Guard `client`:** Usa o driver `jwt` (tymon/jwt-auth) apontando para o provider `clients`, que por sua vez usa o model `Client`. Isso permite `auth('client')->attempt(...)` independente de `auth('api')`.
+
+Rode a migration:
+
+```bash
+docker compose exec backend php artisan migrate
+```
+
+---
+
+## Passo 8.3 - Client Model + Observer + JWTSubject
+
+### Model
+
+Crie `backend/app/Models/Client.php`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use App\Observers\ClientObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Tymon\JWTAuth\Contracts\JWTSubject;
+
+#[ObservedBy(ClientObserver::class)]
+class Client extends Authenticatable implements JWTSubject
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+    ];
+
+    protected $hidden = [
+        'password',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+        ];
+    }
+
+    public function getJWTIdentifier(): mixed
+    {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims(): array
+    {
+        return [
+            'guard' => 'client',
+        ];
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function evaluations(): HasMany
+    {
+        return $this->hasMany(OrderEvaluation::class);
+    }
+}
+```
+
+**Pontos importantes:**
+- Extende `Authenticatable` (nao `Model`) — necessario para autenticacao JWT
+- Implementa `JWTSubject` — mesma interface do `User`, mas com claim `guard: client` para diferenciar
+- `password` cast como `hashed` — Laravel faz hash automaticamente ao salvar
+- Sem `BelongsToTenant` — clientes sao globais, interagem com qualquer tenant
+
+### Observer
+
+Crie `backend/app/Observers/ClientObserver.php`:
+
+```php
+<?php
+
+namespace App\Observers;
+
+use App\Models\Client;
+use Illuminate\Support\Str;
+
+class ClientObserver
+{
+    public function creating(Client $client): void
+    {
+        if (empty($client->uuid)) {
+            $client->uuid = (string) Str::uuid();
+        }
+    }
+}
+```
+
+### Adicionar relacionamento no Order Model
+
+Edite `backend/app/Models/Order.php` e adicione o relacionamento `client()`:
+
+```php
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+// Adicionar ao Model (apos o metodo table()):
+public function client(): BelongsTo
+{
+    return $this->belongsTo(Client::class);
+}
+```
+
+### Testar no tinker
+
+```bash
+docker compose exec backend php artisan tinker
+```
+
+```php
+$client = App\Models\Client::create([
+    'name' => 'Joao Silva',
+    'email' => 'joao@email.com',
+    'password' => 'password',
+]);
+
+echo "UUID: {$client->uuid}, Email: {$client->email}";
+// UUID: 550e8400-..., Email: joao@email.com
+
+// Testar autenticacao
+$token = auth('client')->attempt(['email' => 'joao@email.com', 'password' => 'password']);
+echo "Token: " . substr($token, 0, 30) . "...";
+
+// Verificar claims
+$payload = auth('client')->payload();
+echo "Guard: " . $payload->get('guard'); // "client"
+
+auth('client')->logout();
+$client->delete();
+exit;
+```
+
+---
+
+## Passo 8.4 - Client Auth Controller + Routes
+
+### FormRequests
+
+Crie `backend/app/Http/Requests/ClientAuth/RegisterClientRequest.php`:
+
+```php
+<?php
+
+namespace App\Http\Requests\ClientAuth;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class RegisterClientRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:clients,email'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+        ];
+    }
+}
+```
+
+Crie `backend/app/Http/Requests/ClientAuth/LoginClientRequest.php`:
+
+```php
+<?php
+
+namespace App\Http\Requests\ClientAuth;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class LoginClientRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ];
+    }
+}
+```
+
+### Resource
+
+Crie `backend/app/Http/Resources/ClientResource.php`:
+
+```php
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class ClientResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'uuid' => $this->uuid,
+            'name' => $this->name,
+            'email' => $this->email,
+            'created_at' => $this->created_at->toISOString(),
+        ];
+    }
+}
+```
+
+### Controller
+
+Crie `backend/app/Http/Controllers/Api/V1/Auth/ClientAuthController.php`:
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\V1\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\ClientAuth\LoginClientRequest;
+use App\Http\Requests\ClientAuth\RegisterClientRequest;
+use App\Http\Resources\ClientResource;
+use App\Models\Client;
+use Illuminate\Http\JsonResponse;
+
+/**
+ * @tags Auth Cliente
+ */
+class ClientAuthController extends Controller
+{
+    /**
+     * Registrar cliente
+     *
+     * Cria uma nova conta de cliente. Retorna o token JWT.
+     *
+     * @unauthenticated
+     */
+    public function register(RegisterClientRequest $request): JsonResponse
+    {
+        $client = Client::create($request->validated());
+
+        $token = auth('client')->login($client);
+
+        return $this->respondWithToken($token, $client, 201);
+    }
+
+    /**
+     * Login cliente
+     *
+     * Autentica um cliente e retorna um token JWT.
+     *
+     * @unauthenticated
+     */
+    public function login(LoginClientRequest $request): JsonResponse
+    {
+        $token = auth('client')->attempt($request->validated());
+
+        if (!$token) {
+            return response()->json([
+                'message' => 'Credenciais invalidas.',
+            ], 401);
+        }
+
+        return $this->respondWithToken($token, auth('client')->user());
+    }
+
+    /**
+     * Cliente autenticado
+     *
+     * Retorna os dados do cliente autenticado.
+     */
+    public function me(): JsonResponse
+    {
+        return response()->json([
+            'data' => new ClientResource(auth('client')->user()),
+        ]);
+    }
+
+    /**
+     * Logout cliente
+     *
+     * Invalida o token JWT do cliente.
+     */
+    public function logout(): JsonResponse
+    {
+        auth('client')->logout();
+
+        return response()->json([
+            'message' => 'Logout realizado com sucesso.',
+        ]);
+    }
+
+    private function respondWithToken(string $token, Client $client, int $status = 200): JsonResponse
+    {
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth('client')->factory()->getTTL() * 60,
+            'client' => new ClientResource($client),
+        ], $status);
+    }
+}
+```
+
+### Routes
+
+Adicione as rotas em `backend/routes/api.php`.
+
+No topo, adicione o import:
+
+```php
+use App\Http\Controllers\Api\V1\Auth\ClientAuthController;
+```
+
+Dentro do bloco `Route::prefix('v1')->group(function () {`, adicione apos as rotas publicas de admin auth:
+
+```php
+    // --- Rotas publicas de clientes ---
+    Route::prefix('client/auth')->group(function () {
+        Route::post('/register', [ClientAuthController::class, 'register']);
+        Route::post('/login', [ClientAuthController::class, 'login']);
+    });
+
+    // --- Rotas protegidas de clientes (requer JWT guard "client") ---
+    Route::middleware('auth:client')->prefix('client')->group(function () {
+        Route::get('/auth/me', [ClientAuthController::class, 'me']);
+        Route::post('/auth/logout', [ClientAuthController::class, 'logout']);
+    });
+```
+
+> **Prefixo `/client/`:** Separa endpoints de clientes dos de admin. Endpoints finais:
+> - `POST /api/v1/client/auth/register` (publico)
+> - `POST /api/v1/client/auth/login` (publico)
+> - `GET /api/v1/client/auth/me` (requer token de client)
+> - `POST /api/v1/client/auth/logout` (requer token de client)
+
+---
+
+## Passo 8.5 - Migration: FK orders.client_id + tabela order_evaluations
+
+### Migration para FK em orders.client_id
+
+Crie `backend/database/migrations/0001_01_02_000013_add_client_fk_to_orders_table.php`:
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->foreign('client_id')
+                ->references('id')
+                ->on('clients')
+                ->onDelete('set null');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropForeign(['client_id']);
+        });
+    }
+};
+```
+
+> **Nota:** A coluna `client_id` ja existe como `unsignedBigInteger` nullable (criada no Passo 7.2). Agora adicionamos apenas a FK constraint.
+
+### Migration order_evaluations
+
+Crie `backend/database/migrations/0001_01_02_000014_create_order_evaluations_table.php`:
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('order_evaluations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('order_id')->constrained()->onDelete('cascade');
+            $table->foreignId('client_id')->constrained()->onDelete('cascade');
+            $table->tinyInteger('stars'); // 1-5
+            $table->text('comment')->nullable();
+            $table->timestamps();
+
+            // Um cliente so pode avaliar um pedido uma vez
+            $table->unique(['order_id', 'client_id']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('order_evaluations');
+    }
+};
+```
+
+Rode as migrations:
+
+```bash
+docker compose exec backend php artisan migrate
+```
+
+Saida esperada:
+
+```
+Running migrations.
+0001_01_02_000012_create_clients_table ................ DONE
+0001_01_02_000013_add_client_fk_to_orders_table ....... DONE
+0001_01_02_000014_create_order_evaluations_table ...... DONE
+```
+
+---
+
+## Passo 8.6 - Evaluation Model + Repository + Actions
+
+### Model
+
+Crie `backend/app/Models/OrderEvaluation.php`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class OrderEvaluation extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'order_id',
+        'client_id',
+        'stars',
+        'comment',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'stars' => 'integer',
+        ];
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+}
+```
+
+Adicione o relacionamento no `Order` Model (`backend/app/Models/Order.php`):
+
+```php
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+// Adicionar ao Model:
+public function evaluation(): HasOne
+{
+    return $this->hasOne(OrderEvaluation::class);
+}
+```
+
+### Repository Interface
+
+Crie `backend/app/Repositories/Contracts/EvaluationRepositoryInterface.php`:
+
+```php
+<?php
+
+namespace App\Repositories\Contracts;
+
+use App\Models\OrderEvaluation;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+interface EvaluationRepositoryInterface
+{
+    public function paginateByTenant(int $tenantId, int $perPage = 15): LengthAwarePaginator;
+
+    public function findById(int $id): ?OrderEvaluation;
+
+    public function findByOrderAndClient(int $orderId, int $clientId): ?OrderEvaluation;
+
+    public function create(array $data): OrderEvaluation;
+
+    public function delete(int $id): bool;
+}
+```
+
+### Repository Implementation
+
+Crie `backend/app/Repositories/Eloquent/EvaluationRepository.php`:
+
+```php
+<?php
+
+namespace App\Repositories\Eloquent;
+
+use App\Models\OrderEvaluation;
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+final class EvaluationRepository implements EvaluationRepositoryInterface
+{
+    public function __construct(
+        private readonly OrderEvaluation $model,
+    ) {}
+
+    public function paginateByTenant(int $tenantId, int $perPage = 15): LengthAwarePaginator
+    {
+        return $this->model
+            ->with(['client', 'order'])
+            ->whereHas('order', fn ($q) => $q->where('tenant_id', $tenantId))
+            ->latest()
+            ->paginate($perPage);
+    }
+
+    public function findById(int $id): ?OrderEvaluation
+    {
+        return $this->model->with(['client', 'order'])->find($id);
+    }
+
+    public function findByOrderAndClient(int $orderId, int $clientId): ?OrderEvaluation
+    {
+        return $this->model
+            ->where('order_id', $orderId)
+            ->where('client_id', $clientId)
+            ->first();
+    }
+
+    public function create(array $data): OrderEvaluation
+    {
+        return $this->model->create($data);
+    }
+
+    public function delete(int $id): bool
+    {
+        $evaluation = $this->model->find($id);
+
+        return $evaluation ? (bool) $evaluation->delete() : false;
+    }
+}
+```
+
+> **`paginateByTenant()`:** Avaliacoes nao tem `tenant_id` diretamente — filtramos pelo `tenant_id` do pedido via `whereHas`. Isso permite que o admin veja apenas avaliacoes dos pedidos do seu tenant.
+
+### Registrar no Service Provider
+
+Adicione o binding em `backend/app/Providers/RepositoryServiceProvider.php`:
+
+1. Adicione os imports:
+
+```php
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
+use App\Repositories\Eloquent\EvaluationRepository;
+```
+
+2. Adicione ao array `$repositories`:
+
+```php
+EvaluationRepositoryInterface::class => EvaluationRepository::class,
+```
+
+### DTO
+
+Crie `backend/app/DTOs/Evaluation/CreateEvaluationDTO.php`:
+
+```php
+<?php
+
+namespace App\DTOs\Evaluation;
+
+use App\Http\Requests\Evaluation\StoreEvaluationRequest;
+
+final readonly class CreateEvaluationDTO
+{
+    public function __construct(
+        public int $orderId,
+        public int $stars,
+        public ?string $comment,
+    ) {}
+
+    public static function fromRequest(StoreEvaluationRequest $request): self
+    {
+        return new self(
+            orderId: $request->validated('order_id'),
+            stars: $request->validated('stars'),
+            comment: $request->validated('comment'),
+        );
+    }
+}
+```
+
+### Actions
+
+Crie `backend/app/Actions/Evaluation/CreateEvaluationAction.php`:
+
+```php
+<?php
+
+namespace App\Actions\Evaluation;
+
+use App\DTOs\Evaluation\CreateEvaluationDTO;
+use App\Models\Order;
+use App\Models\OrderEvaluation;
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
+
+final class CreateEvaluationAction
+{
+    public function __construct(
+        private readonly EvaluationRepositoryInterface $repository,
+    ) {}
+
+    /**
+     * @return OrderEvaluation|string Avaliacao criada ou mensagem de erro
+     */
+    public function execute(CreateEvaluationDTO $dto, int $clientId): OrderEvaluation|string
+    {
+        $order = Order::withoutGlobalScopes()->find($dto->orderId);
+
+        if (!$order) {
+            return 'Pedido nao encontrado.';
+        }
+
+        if ($order->status !== Order::STATUS_DELIVERED) {
+            return 'Apenas pedidos entregues podem ser avaliados.';
+        }
+
+        if ($order->client_id !== $clientId) {
+            return 'Voce so pode avaliar seus proprios pedidos.';
+        }
+
+        $existing = $this->repository->findByOrderAndClient($dto->orderId, $clientId);
+
+        if ($existing) {
+            return 'Voce ja avaliou este pedido.';
+        }
+
+        return $this->repository->create([
+            'order_id' => $dto->orderId,
+            'client_id' => $clientId,
+            'stars' => $dto->stars,
+            'comment' => $dto->comment,
+        ]);
+    }
+}
+```
+
+> **Validacoes de negocio na Action:** Verificamos status do pedido, propriedade do cliente, e unicidade — tudo antes de criar. Essas regras nao pertencem ao FormRequest porque dependem de estado do banco.
+
+Crie `backend/app/Actions/Evaluation/ListEvaluationsAction.php`:
+
+```php
+<?php
+
+namespace App\Actions\Evaluation;
+
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+final class ListEvaluationsAction
+{
+    public function __construct(
+        private readonly EvaluationRepositoryInterface $repository,
+    ) {}
+
+    public function execute(int $tenantId, int $perPage = 15): LengthAwarePaginator
+    {
+        return $this->repository->paginateByTenant($tenantId, $perPage);
+    }
+}
+```
+
+Crie `backend/app/Actions/Evaluation/DeleteEvaluationAction.php`:
+
+```php
+<?php
+
+namespace App\Actions\Evaluation;
+
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
+
+final class DeleteEvaluationAction
+{
+    public function __construct(
+        private readonly EvaluationRepositoryInterface $repository,
+    ) {}
+
+    public function execute(int $id): bool
+    {
+        return $this->repository->delete($id);
+    }
+}
+```
+
+---
+
+## Passo 8.7 - Evaluation Controller + Routes + FormRequests + Resource
+
+### FormRequest
+
+Crie `backend/app/Http/Requests/Evaluation/StoreEvaluationRequest.php`:
+
+```php
+<?php
+
+namespace App\Http\Requests\Evaluation;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreEvaluationRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'order_id' => ['required', 'integer', 'exists:orders,id'],
+            'stars' => ['required', 'integer', 'min:1', 'max:5'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'stars.min' => 'A nota minima e 1 estrela.',
+            'stars.max' => 'A nota maxima e 5 estrelas.',
+        ];
+    }
+}
+```
+
+### Resource
+
+Crie `backend/app/Http/Resources/EvaluationResource.php`:
+
+```php
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class EvaluationResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'stars' => $this->stars,
+            'comment' => $this->comment,
+            'client' => new ClientResource($this->whenLoaded('client')),
+            'order' => [
+                'id' => $this->order->id,
+                'identify' => $this->order->identify,
+            ],
+            'created_at' => $this->created_at->toISOString(),
+        ];
+    }
+}
+```
+
+### Controller (Client-side — criar avaliacao)
+
+Crie `backend/app/Http/Controllers/Api/V1/ClientEvaluationController.php`:
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Evaluation\StoreEvaluationRequest;
+use App\Http\Resources\EvaluationResource;
+use App\DTOs\Evaluation\CreateEvaluationDTO;
+use App\Actions\Evaluation\CreateEvaluationAction;
+use Illuminate\Http\JsonResponse;
+
+/**
+ * @tags Avaliacoes (Cliente)
+ */
+class ClientEvaluationController extends Controller
+{
+    /**
+     * Criar avaliacao
+     *
+     * Permite que um cliente autenticado avalie um pedido entregue.
+     * Requer autenticacao via guard `client`.
+     * Apenas pedidos com status `delivered` e pertencentes ao cliente podem ser avaliados.
+     */
+    public function store(StoreEvaluationRequest $request, CreateEvaluationAction $action): JsonResponse
+    {
+        $clientId = auth('client')->id();
+
+        $result = $action->execute(
+            CreateEvaluationDTO::fromRequest($request),
+            $clientId,
+        );
+
+        if (is_string($result)) {
+            return response()->json(['message' => $result], 422);
+        }
+
+        $result->load(['client', 'order']);
+
+        return (new EvaluationResource($result))
+            ->response()
+            ->setStatusCode(201);
+    }
+}
+```
+
+### Controller (Admin-side — listar e deletar avaliacoes)
+
+Crie `backend/app/Http/Controllers/Api/V1/EvaluationController.php`:
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\EvaluationResource;
+use App\Actions\Evaluation\ListEvaluationsAction;
+use App\Actions\Evaluation\DeleteEvaluationAction;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+
+/**
+ * @tags Avaliacoes
+ */
+class EvaluationController extends Controller
+{
+    /**
+     * Listar avaliacoes do tenant
+     *
+     * Retorna todas as avaliacoes de pedidos do tenant. Requer permissao `orders.view`.
+     */
+    public function index(ListEvaluationsAction $action): AnonymousResourceCollection
+    {
+        $user = auth('api')->user();
+        $tenantId = $user->tenant_id;
+
+        // Super-admin ve todas
+        if ($user->isSuperAdmin()) {
+            $tenantId = 0; // trigger para buscar todas
+        }
+
+        $evaluations = $action->execute(
+            tenantId: $tenantId,
+            perPage: request()->integer('per_page', 15),
+        );
+
+        return EvaluationResource::collection($evaluations);
+    }
+
+    /**
+     * Remover avaliacao
+     *
+     * Remove uma avaliacao de pedido. Requer permissao `orders.delete`.
+     */
+    public function destroy(int $evaluation, DeleteEvaluationAction $action): JsonResponse
+    {
+        $deleted = $action->execute($evaluation);
+
+        if (!$deleted) {
+            return response()->json(['message' => 'Avaliacao nao encontrada.'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Avaliacao removida com sucesso.',
+        ]);
+    }
+}
+```
+
+Atualize o `EvaluationRepository::paginateByTenant()` para suportar super-admin (tenantId = 0):
+
+No metodo `paginateByTenant`, ajuste:
+
+```php
+public function paginateByTenant(int $tenantId, int $perPage = 15): LengthAwarePaginator
+{
+    $query = $this->model->with(['client', 'order'])->latest();
+
+    if ($tenantId > 0) {
+        $query->whereHas('order', fn ($q) => $q->where('tenant_id', $tenantId));
+    }
+
+    return $query->paginate($perPage);
+}
+```
+
+### Routes
+
+Adicione os imports no topo de `backend/routes/api.php`:
+
+```php
+use App\Http\Controllers\Api\V1\Auth\ClientAuthController;
+use App\Http\Controllers\Api\V1\ClientEvaluationController;
+use App\Http\Controllers\Api\V1\EvaluationController;
+```
+
+Rotas de clientes (ja adicionadas no Passo 8.4). Agora adicione a rota de avaliacao do cliente dentro do grupo `auth:client`:
+
+```php
+    // --- Rotas protegidas de clientes (requer JWT guard "client") ---
+    Route::middleware('auth:client')->prefix('client')->group(function () {
+        Route::get('/auth/me', [ClientAuthController::class, 'me']);
+        Route::post('/auth/logout', [ClientAuthController::class, 'logout']);
+
+        // Avaliacoes (cliente cria)
+        Route::post('/evaluations', [ClientEvaluationController::class, 'store']);
+    });
+```
+
+Adicione as rotas admin de avaliacoes dentro do grupo `tenant:required`:
+
+```php
+            // Evaluations (admin visualiza e remove)
+            Route::get('evaluations', [EvaluationController::class, 'index'])
+                ->middleware('permission:orders.view');
+            Route::delete('evaluations/{evaluation}', [EvaluationController::class, 'destroy'])
+                ->middleware('permission:orders.delete');
+```
+
+---
+
+## Passo 8.8 - Seeders + teste da API
+
+### Client Seeder
+
+Crie `backend/database/seeders/ClientSeeder.php`:
+
+```php
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Client;
+use Illuminate\Database\Seeder;
+
+class ClientSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $clients = [
+            ['name' => 'Joao Silva', 'email' => 'joao@email.com', 'password' => 'password'],
+            ['name' => 'Maria Santos', 'email' => 'maria@email.com', 'password' => 'password'],
+            ['name' => 'Pedro Oliveira', 'email' => 'pedro@email.com', 'password' => 'password'],
+        ];
+
+        foreach ($clients as $data) {
+            Client::firstOrCreate(
+                ['email' => $data['email']],
+                $data,
+            );
+        }
+
+        $this->command->info('Clientes criados: joao@email.com, maria@email.com, pedro@email.com');
+    }
+}
+```
+
+### Evaluation Seeder
+
+Crie `backend/database/seeders/EvaluationSeeder.php`:
+
+```php
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Client;
+use App\Models\Order;
+use App\Models\OrderEvaluation;
+use Illuminate\Database\Seeder;
+
+class EvaluationSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $joao = Client::where('email', 'joao@email.com')->first();
+        $maria = Client::where('email', 'maria@email.com')->first();
+
+        if (!$joao || !$maria) {
+            $this->command->warn('Clientes nao encontrados. Rode ClientSeeder primeiro.');
+            return;
+        }
+
+        // Vincular clientes aos pedidos entregues
+        $order1 = Order::where('identify', 'ORD-000001')->first(); // delivered
+
+        if (!$order1 || $order1->status !== 'delivered') {
+            $this->command->warn('Pedido ORD-000001 nao encontrado ou nao esta entregue.');
+            return;
+        }
+
+        // Vincular client_id ao pedido
+        $order1->update(['client_id' => $joao->id]);
+
+        // Avaliacao do Joao para o pedido 1
+        OrderEvaluation::firstOrCreate(
+            ['order_id' => $order1->id, 'client_id' => $joao->id],
+            [
+                'stars' => 5,
+                'comment' => 'Pizza excelente! Entrega rapida.',
+            ],
+        );
+
+        $this->command->info('Avaliacoes criadas com sucesso.');
+    }
+}
+```
+
+Rode os seeders:
+
+```bash
+docker compose exec backend php artisan db:seed --class=ClientSeeder
+docker compose exec backend php artisan db:seed --class=EvaluationSeeder
+```
+
+### Teste da API
+
+**Registrar um novo cliente:**
+
+```bash
+curl -s -X POST http://localhost/api/v1/client/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ana Costa",
+    "email": "ana@email.com",
+    "password": "password",
+    "password_confirmation": "password"
+  }' | python3 -m json.tool
+```
+
+Saida esperada:
+
+```json
+{
+    "access_token": "eyJ...",
+    "token_type": "bearer",
+    "expires_in": 3600,
+    "client": {
+        "id": 4,
+        "uuid": "...",
+        "name": "Ana Costa",
+        "email": "ana@email.com",
+        ...
+    }
+}
+```
+
+**Login como cliente existente:**
+
+```bash
+CLIENT_TOKEN=$(curl -s -X POST http://localhost/api/v1/client/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"joao@email.com","password":"password"}' | \
+  python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+```
+
+**Dados do cliente autenticado:**
+
+```bash
+curl -s http://localhost/api/v1/client/auth/me \
+  -H "Authorization: Bearer $CLIENT_TOKEN" | python3 -m json.tool
+```
+
+**Criar avaliacao (como Joao, dono do pedido ORD-000001):**
+
+```bash
+curl -s -X POST http://localhost/api/v1/client/evaluations \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"order_id": 1, "stars": 4, "comment": "Muito bom!"}' | python3 -m json.tool
+```
+
+> **Nota:** Se o seeder ja criou a avaliacao, esse curl retornara `"Voce ja avaliou este pedido."` (422).
+
+**Listar avaliacoes (como admin):**
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"gerente@demo.com","password":"password"}' | \
+  python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+curl -s http://localhost/api/v1/evaluations \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+```
+
+---
+
+## Passo 8.9 - Frontend: tipos TypeScript + servicos
+
+### Tipos
+
+Crie `frontend/src/types/evaluation.ts`:
+
+```typescript
+export interface Evaluation {
+  id: number;
+  stars: number;
+  comment: string | null;
+  client: {
+    id: number;
+    uuid: string;
+    name: string;
+    email: string;
+  };
+  order: {
+    id: number;
+    identify: string;
+  };
+  created_at: string;
+}
+```
+
+### Servico
+
+Crie `frontend/src/services/evaluation-service.ts`:
+
+```typescript
+import { apiClient } from "@/lib/api";
+import type { Evaluation } from "@/types/evaluation";
+import type { PaginatedResponse } from "@/types/plan";
+
+export async function getEvaluations(
+  page = 1
+): Promise<PaginatedResponse<Evaluation>> {
+  return apiClient<PaginatedResponse<Evaluation>>(
+    `/v1/evaluations?page=${page}`
+  );
+}
+
+export async function deleteEvaluation(
+  id: number
+): Promise<{ message: string }> {
+  return apiClient<{ message: string }>(`/v1/evaluations/${id}`, {
+    method: "DELETE",
+  });
+}
+```
+
+---
+
+## Passo 8.10 - Frontend: pagina de Avaliacoes (admin)
+
+Crie `frontend/src/app/(admin)/reviews/page.tsx`:
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { getEvaluations, deleteEvaluation } from "@/services/evaluation-service";
+import type { Evaluation } from "@/types/evaluation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Star, Trash2 } from "lucide-react";
+import { TenantRequiredAlert } from "@/components/tenant-required-alert";
+
+function StarRating({ stars }: { stars: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`h-4 w-4 ${
+            i < stars
+              ? "fill-yellow-400 text-yellow-400"
+              : "text-gray-300"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function ReviewsPage() {
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchEvaluations = async () => {
+    try {
+      const response = await getEvaluations();
+      setEvaluations(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar avaliacoes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvaluations();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Tem certeza que deseja remover esta avaliacao?")) return;
+
+    try {
+      await deleteEvaluation(id);
+      fetchEvaluations();
+    } catch (error) {
+      console.error("Erro ao remover avaliacao:", error);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <TenantRequiredAlert resource="avaliacoes" />
+
+      <h1 className="text-2xl font-bold">Avaliacoes</h1>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Pedido</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Nota</TableHead>
+              <TableHead>Comentario</TableHead>
+              <TableHead>Data</TableHead>
+              <TableHead className="w-[60px]">Acoes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {evaluations.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  Nenhuma avaliacao encontrada.
+                </TableCell>
+              </TableRow>
+            ) : (
+              evaluations.map((evaluation) => (
+                <TableRow key={evaluation.id}>
+                  <TableCell className="font-mono font-medium">
+                    {evaluation.order.identify}
+                  </TableCell>
+                  <TableCell>{evaluation.client.name}</TableCell>
+                  <TableCell>
+                    <StarRating stars={evaluation.stars} />
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate text-muted-foreground">
+                    {evaluation.comment || "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(evaluation.created_at).toLocaleDateString("pt-BR")}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Remover"
+                      onClick={() => handleDelete(evaluation.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
+```
+
+### Sidebar ja configurada
+
+A sidebar ja tem o link "Avaliacoes" no grupo **Operacao** (configurado no Passo 5.12). Nenhuma alteracao necessaria.
+
+---
+
+## Passo 8.11 - Verificacao end-to-end da Fase 8
+
+### Checklist de verificacao
+
+**Backend — Autenticacao de Clientes:**
+
+- [ ] Migration `create_clients_table` rodou sem erros
+- [ ] Guard `client` configurado em `config/auth.php` com provider `clients`
+- [ ] Model `Client` extende `Authenticatable`, implementa `JWTSubject`
+- [ ] `ClientObserver` gera UUID
+- [ ] Endpoints: register, login, me, logout em `/api/v1/client/auth/*`
+- [ ] Token JWT do client tem claim `guard: client`
+- [ ] Registro cria conta + retorna token
+- [ ] Login autentica + retorna token
+- [ ] Guard `client` e `api` sao independentes (tokens nao sao intercambiaveis)
+
+**Backend — Avaliacoes:**
+
+- [ ] Migrations `add_client_fk_to_orders` e `create_order_evaluations_table` rodaram
+- [ ] `OrderEvaluation` model com relacionamentos `order()` e `client()`
+- [ ] `Order` model tem `client()` (BelongsTo) e `evaluation()` (HasOne)
+- [ ] Unique constraint `[order_id, client_id]` impede avaliacoes duplicadas
+- [ ] `CreateEvaluationAction` valida: status delivered, propriedade do cliente, unicidade
+- [ ] Rota `POST /client/evaluations` requer guard `client`
+- [ ] Rota `GET /evaluations` requer guard `api` + permission `orders.view`
+- [ ] `EvaluationRepository::paginateByTenant()` filtra via `whereHas('order', ...)`
+- [ ] Seeder cria clientes e avaliacao de exemplo
+
+**Frontend:**
+
+- [ ] Tipos `Evaluation` em `evaluation.ts`
+- [ ] Servico `evaluation-service.ts` com listagem e exclusao
+- [ ] Pagina `/reviews` lista avaliacoes com estrelas visuais
+- [ ] `TenantRequiredAlert` aparece para super-admin
+- [ ] Swagger mostra tags "Auth Cliente" e "Avaliacoes"
+
+### Fluxo completo de teste
+
+1. **Registrar cliente:** `POST /client/auth/register` com nome, email, senha
+2. **Login cliente:** `POST /client/auth/login` → obter token
+3. **Criar pedido como gerente** (se necessario) e marcar como `delivered`
+4. **Criar avaliacao como cliente:** `POST /client/evaluations` com token de client
+5. **Tentar avaliar novamente** → erro 422 "Voce ja avaliou este pedido."
+6. **Listar avaliacoes como admin:** `GET /evaluations` com token de admin
+7. **No frontend**, acessar `/reviews` e verificar a tabela com estrelas
+
+### Resumo dos arquivos da Fase 8
+
+**Backend:**
+
+```
+backend/
+├── config/auth.php (modificado — guard client + provider clients)
+├── database/
+│   ├── migrations/
+│   │   ├── 0001_01_02_000012_create_clients_table.php
+│   │   ├── 0001_01_02_000013_add_client_fk_to_orders_table.php
+│   │   └── 0001_01_02_000014_create_order_evaluations_table.php
+│   └── seeders/
+│       ├── ClientSeeder.php
+│       └── EvaluationSeeder.php
+├── app/
+│   ├── Models/
+│   │   ├── Client.php
+│   │   ├── OrderEvaluation.php
+│   │   └── Order.php (modificado — client() + evaluation())
+│   ├── Observers/ClientObserver.php
+│   ├── Repositories/
+│   │   ├── Contracts/EvaluationRepositoryInterface.php
+│   │   └── Eloquent/EvaluationRepository.php
+│   ├── DTOs/Evaluation/CreateEvaluationDTO.php
+│   ├── Actions/Evaluation/
+│   │   ├── CreateEvaluationAction.php
+│   │   ├── ListEvaluationsAction.php
+│   │   └── DeleteEvaluationAction.php
+│   ├── Http/
+│   │   ├── Controllers/Api/V1/
+│   │   │   ├── Auth/ClientAuthController.php
+│   │   │   ├── ClientEvaluationController.php
+│   │   │   └── EvaluationController.php
+│   │   ├── Requests/
+│   │   │   ├── ClientAuth/
+│   │   │   │   ├── RegisterClientRequest.php
+│   │   │   │   └── LoginClientRequest.php
+│   │   │   └── Evaluation/StoreEvaluationRequest.php
+│   │   └── Resources/
+│   │       ├── ClientResource.php
+│   │       └── EvaluationResource.php
+│   └── Providers/RepositoryServiceProvider.php (modificado)
+└── routes/api.php (modificado)
+```
+
+**Frontend:**
+
+```
+frontend/src/
+├── types/evaluation.ts
+├── services/evaluation-service.ts
+└── app/(admin)/reviews/page.tsx
+```
+
+**Conceitos aprendidos:**
+- **Multi-guard JWT** — dois guards (`api` para admin, `client` para cliente) com providers e models separados
+- **`JWTSubject` em multiplos models** — tanto `User` quanto `Client` implementam a interface
+- **Custom claim `guard`** — diferencia tokens de admin e client no payload JWT
+- **Registro publico** — endpoint sem autenticacao que cria conta + retorna token em uma unica chamada
+- **`whereHas()` para filtro indireto** — avaliacoes nao tem `tenant_id`, mas filtramos pelo `tenant_id` do pedido relacionado
+- **Validacao de negocio na Action** — status do pedido, propriedade do cliente, unicidade — regras que dependem de estado do banco
+- **Unique composite constraint** — `[order_id, client_id]` impede avaliacoes duplicadas a nivel de banco
+- **Componente `StarRating`** — renderizacao condicional de icones SVG com classes Tailwind
+
+**Proximo:** Fase 9 - Dashboard com Metricas
 
 ---
 
