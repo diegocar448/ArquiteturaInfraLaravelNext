@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\TableController;
 use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\OrderController;
+use App\Http\Controllers\Api\V1\ClientEvaluationController;
+use App\Http\Controllers\Api\V1\EvaluationController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +30,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:client')->prefix('client')->group(function () {
         Route::get('/auth/me', [ClientAuthController::class, 'me']);
         Route::post('/auth/logout', [ClientAuthController::class, 'logout']);
+
+        // Avaliacoes (cliente cria)
+        Route::post('/evaluations', [ClientEvaluationController::class, 'store']);        
     });
 
     // Rotas publicas
@@ -151,6 +156,12 @@ Route::prefix('v1')->group(function () {
                     'update' => 'permission:orders.edit',
                     'destroy' => 'permission:orders.delete',
                 ]);
+
+            // Evaluations (admin visualiza e remove)
+            Route::get('evaluations', [EvaluationController::class, 'index'])
+                ->middleware('permission:orders.view');
+            Route::delete('evaluations/{evaluation}', [EvaluationController::class, 'destroy'])
+                ->middleware('permission:orders.delete');
         });
     });
 });

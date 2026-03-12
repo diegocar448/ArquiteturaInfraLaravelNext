@@ -20685,10 +20685,9 @@ public function paginateByTenant(int $tenantId, int $perPage = 15): LengthAwareP
 
 ### Routes
 
-Adicione os imports no topo de `backend/routes/api.php`:
+Adicione os imports no topo de `backend/routes/api.php` (o `ClientAuthController` ja foi adicionado no Passo 8.4):
 
 ```php
-use App\Http\Controllers\Api\V1\Auth\ClientAuthController;
 use App\Http\Controllers\Api\V1\ClientEvaluationController;
 use App\Http\Controllers\Api\V1\EvaluationController;
 ```

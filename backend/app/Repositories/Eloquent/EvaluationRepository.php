@@ -14,11 +14,13 @@ final class EvaluationRepository implements EvaluationRepositoryInterface
 
     public function paginateByTenant(int $tenantId, int $perPage = 15): LengthAwarePaginator
     {
-        return $this->model
-            ->with(['client', 'order'])
-            ->whereHas('order', fn ($q) => $q->where('tenant_id', $tenantId))
-            ->latest()
-            ->paginate($perPage);
+        $query = $this->model->with(['client', 'order'])->latest();
+
+        if ($tenantId > 0) {
+            $query->whereHas('order', fn ($q) => $q->where('tenant_id', $tenantId));
+        }
+
+        return $query->paginate($perPage);
     }
 
     public function findById(int $id): ?OrderEvaluation
