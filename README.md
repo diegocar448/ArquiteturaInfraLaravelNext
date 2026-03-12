@@ -1,3 +1,7 @@
+![CI](https://github.com/diegocar448/laravelnextts/actions/workflows/ci.yml/badge.svg)
+![E2E](https://github.com/diegocar448/laravelnextts/actions/workflows/e2e.yml/badge.svg)
+![CD](https://github.com/diegocar448/laravelnextts/actions/workflows/cd.yml/badge.svg)
+
 # Orderly - Tutorial de Construcao Passo a Passo
 
 > Construindo uma plataforma SaaS multi-tenant de delivery com **Laravel 12** + **Next.js 15** + **Docker** do zero, como um arquiteto senior faria.
@@ -24882,13 +24886,15 @@ jobs:
 
 ### Adicionar status badges
 
-No topo do README (ou logo abaixo do titulo), adicione os badges que mostram o status dos workflows. Substitua `seu-usuario` e `seu-repo` pelos valores reais:
+No topo do README (antes do titulo), adicione os badges:
 
 ```markdown
-![CI](https://github.com/seu-usuario/seu-repo/actions/workflows/ci.yml/badge.svg)
-![E2E](https://github.com/seu-usuario/seu-repo/actions/workflows/e2e.yml/badge.svg)
-![CD](https://github.com/seu-usuario/seu-repo/actions/workflows/cd.yml/badge.svg)
+![CI](https://github.com/diegocar448/laravelnextts/actions/workflows/ci.yml/badge.svg)
+![E2E](https://github.com/diegocar448/laravelnextts/actions/workflows/e2e.yml/badge.svg)
+![CD](https://github.com/diegocar448/laravelnextts/actions/workflows/cd.yml/badge.svg)
 ```
+
+> Os badges so renderizam apos os workflows serem commitados e pushados. Ate la, aparecem como imagem quebrada — e normal.
 
 > Os badges atualizam automaticamente conforme os workflows passam ou falham. E a primeira coisa que recrutadores e contribuidores olham num repositorio.
 
