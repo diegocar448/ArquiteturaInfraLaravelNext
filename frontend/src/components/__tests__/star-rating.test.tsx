@@ -23,14 +23,14 @@ describe("StarRating", () => {
     it("renders 5 stars", () => {
         render(<StarRating stars={3} />);
 
-        const stars = screen.getAllByTestId(/^star-/);
+        const stars = screen.getAllByTestId(/^star-\d$/);
         expect(stars).toHaveLength(5);
     });
 
     it("fills correct number of stars", () => {
         render(<StarRating stars={3} />);
 
-        const stars = screen.getAllByTestId(/^star-/);
+        const stars = screen.getAllByTestId(/^star-\d$/);
         const filled = stars.filter((s) => s.className.includes("filled"));
         const empty = stars.filter((s) => s.className.includes("empty"));
 
@@ -41,7 +41,7 @@ describe("StarRating", () => {
     it("fills all stars for rating 5", () => {
         render(<StarRating stars={5} />);
 
-        const stars = screen.getAllByTestId(/^star-/);
+        const stars = screen.getAllByTestId(/^star-\d$/);
         const filled = stars.filter((s) => s.className.includes("filled"));
 
         expect(filled).toHaveLength(5);
@@ -50,7 +50,7 @@ describe("StarRating", () => {
     it("fills no stars for rating 0", () => {
         render(<StarRating stars={0} />);
 
-        const stars = screen.getAllByTestId(/^star-/);
+        const stars = screen.getAllByTestId(/^star-\d$/);
         const empty = stars.filter((s) => s.className.includes("empty"));
 
         expect(empty).toHaveLength(5);
