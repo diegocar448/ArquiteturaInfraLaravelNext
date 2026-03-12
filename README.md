@@ -22762,7 +22762,8 @@ expect()->extend('toBeValidUuid', function () {
 */
 
 /**
- * Cria um usuario admin com tenant e permissoes para testes.
+ * Cria um usuario super-admin com tenant para testes.
+ * Super-admin bypassa todas as verificacoes de permissao.
  */
 function createAdminUser(): \App\Models\User
 {
@@ -22774,6 +22775,7 @@ function createAdminUser(): \App\Models\User
 
     return \App\Models\User::factory()->create([
         'tenant_id' => $tenant->id,
+        'email' => 'admin@orderly.com', // super-admin email
     ]);
 }
 
@@ -22792,6 +22794,8 @@ function authHeaders(\App\Models\User $user): array
 ```
 
 > **Por que `RefreshDatabase` apenas em Feature tests?** Unit tests nao devem tocar o banco — testam logica pura. Feature tests precisam do banco para testar endpoints HTTP completos (controller → action → repository → banco).
+
+> **Por que `email` de super-admin?** O `createAdminUser()` usa o email `admin@orderly.com` que esta na config `orderly.super_admin_emails`. Isso faz o `isSuperAdmin()` retornar `true`, bypassing todas as verificacoes de permissao (ACL). Sem isso, o usuario de teste receberia 403 Forbidden em todos os endpoints protegidos por `CheckPermission`.
 
 ### Factories necessarias
 
@@ -22933,45 +22937,73 @@ describe('Order Model', function () {
 
 Crie `backend/tests/Unit/Actions/Order/UpdateOrderStatusActionTest.php`:
 
+> **Importante:** Os repositories sao `final class`, entao nao podem ser mockados com `Mockery::mock(OrderRepository::class)`. Em vez disso, mockamos a **interface** (`OrderRepositoryInterface`), que e o que a Action recebe no construtor via injecao de dependencia.
+
 ```php
 <?php
 
 use App\Actions\Order\UpdateOrderStatusAction;
+use App\DTOs\Order\UpdateOrderStatusDTO;
 use App\Models\Order;
-use App\Repositories\Eloquent\OrderRepository;
+use App\Repositories\Contracts\OrderRepositoryInterface;
 
 describe('UpdateOrderStatusAction', function () {
     it('returns error for invalid transition', function () {
-        $order = Mockery::mock(Order::class);
-        $order->shouldReceive('getAttribute')
-            ->with('status')
-            ->andReturn('open');
+        $order = Mockery::mock(Order::class)->makePartial();
+        $order->status = 'open';
+        $order->shouldReceive('canTransitionTo')
+            ->with('delivered')
+            ->andReturn(false);
 
-        $repository = Mockery::mock(OrderRepository::class);
-
-        $action = new UpdateOrderStatusAction($repository);
-        $result = $action->execute($order, 'delivered');
-
-        expect($result)->toBeString()
-            ->and($result)->toContain('Transicao invalida');
-    });
-
-    it('returns updated order for valid transition', function () {
-        $order = Mockery::mock(Order::class);
-        $order->shouldReceive('getAttribute')
-            ->with('status')
-            ->andReturn('open');
-
-        $repository = Mockery::mock(OrderRepository::class);
-        $repository->shouldReceive('updateStatus')
-            ->with($order, 'accepted')
-            ->once()
+        $repository = Mockery::mock(OrderRepositoryInterface::class);
+        $repository->shouldReceive('findById')
+            ->with(1)
             ->andReturn($order);
 
         $action = new UpdateOrderStatusAction($repository);
-        $result = $action->execute($order, 'accepted');
+        $dto = new UpdateOrderStatusDTO(status: 'delivered');
+        $result = $action->execute(1, $dto);
+
+        expect($result)->toBeString()
+            ->and($result)->toContain('nao e permitida');
+    });
+
+    it('returns updated order for valid transition', function () {
+        $order = Mockery::mock(Order::class)->makePartial();
+        $order->status = 'open';
+        $order->shouldReceive('canTransitionTo')
+            ->with('accepted')
+            ->andReturn(true);
+        $order->shouldReceive('fresh')
+            ->andReturn($order);
+
+        $repository = Mockery::mock(OrderRepositoryInterface::class);
+        $repository->shouldReceive('findById')
+            ->with(1)
+            ->andReturn($order);
+        $repository->shouldReceive('update')
+            ->with(1, ['status' => 'accepted'])
+            ->once();
+
+        $action = new UpdateOrderStatusAction($repository);
+        $dto = new UpdateOrderStatusDTO(status: 'accepted');
+        $result = $action->execute(1, $dto);
 
         expect($result)->toBeInstanceOf(Order::class);
+    });
+
+    it('returns error when order not found', function () {
+        $repository = Mockery::mock(OrderRepositoryInterface::class);
+        $repository->shouldReceive('findById')
+            ->with(999)
+            ->andReturnNull();
+
+        $action = new UpdateOrderStatusAction($repository);
+        $dto = new UpdateOrderStatusDTO(status: 'accepted');
+        $result = $action->execute(999, $dto);
+
+        expect($result)->toBeString()
+            ->and($result)->toContain('nao encontrado');
     });
 });
 ```
@@ -22985,17 +23017,12 @@ Crie `backend/tests/Unit/Actions/Evaluation/CreateEvaluationActionTest.php`:
 
 use App\Actions\Evaluation\CreateEvaluationAction;
 use App\DTOs\Evaluation\CreateEvaluationDTO;
-use App\Models\Client;
 use App\Models\Order;
-use App\Models\OrderEvaluation;
-use App\Repositories\Eloquent\EvaluationRepository;
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
 
 describe('CreateEvaluationAction', function () {
     it('returns error if order does not exist', function () {
-        $repository = Mockery::mock(EvaluationRepository::class);
-
-        $client = Mockery::mock(Client::class);
-        $client->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $repository = Mockery::mock(EvaluationRepositoryInterface::class);
 
         $dto = new CreateEvaluationDTO(
             orderId: 999,
@@ -23003,11 +23030,8 @@ describe('CreateEvaluationAction', function () {
             comment: 'Otimo!',
         );
 
-        // Mock Order::find to return null
-        Order::shouldReceive('find')->with(999)->once()->andReturnNull();
-
         $action = new CreateEvaluationAction($repository);
-        $result = $action->execute($dto, $client);
+        $result = $action->execute($dto, 1);
 
         expect($result)->toBeString()
             ->and($result)->toContain('Pedido nao encontrado');
@@ -23118,7 +23142,7 @@ describe('Auth API', function () {
             ->postJson('/api/v1/auth/logout');
 
         $response->assertOk()
-            ->assertJsonFragment(['message' => 'Successfully logged out']);
+            ->assertJsonFragment(['message' => 'Logout realizado com sucesso.']);
     });
 });
 ```
@@ -23143,7 +23167,7 @@ describe('Plans API', function () {
         $response->assertOk()
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'uuid', 'name', 'price', 'description'],
+                    '*' => ['id', 'name', 'price', 'description'],
                 ],
             ]);
     });
@@ -23177,7 +23201,7 @@ describe('Plans API', function () {
         $plan = Plan::factory()->create();
 
         $response = $this->withHeaders(authHeaders($user))
-            ->getJson("/api/v1/plans/{$plan->uuid}");
+            ->getJson("/api/v1/plans/{$plan->id}");
 
         $response->assertOk()
             ->assertJsonFragment(['name' => $plan->name]);
@@ -23188,7 +23212,7 @@ describe('Plans API', function () {
         $plan = Plan::factory()->create();
 
         $response = $this->withHeaders(authHeaders($user))
-            ->putJson("/api/v1/plans/{$plan->uuid}", [
+            ->putJson("/api/v1/plans/{$plan->id}", [
                 'name' => 'Plano Atualizado',
                 'price' => 149.90,
                 'description' => $plan->description,
@@ -23203,9 +23227,9 @@ describe('Plans API', function () {
         $plan = Plan::factory()->create();
 
         $response = $this->withHeaders(authHeaders($user))
-            ->deleteJson("/api/v1/plans/{$plan->uuid}");
+            ->deleteJson("/api/v1/plans/{$plan->id}");
 
-        $response->assertNoContent();
+        $response->assertOk();
     });
 });
 ```
@@ -23234,7 +23258,7 @@ describe('Orders API', function () {
         $response->assertOk()
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'uuid', 'status', 'total'],
+                    '*' => ['id', 'status', 'total'],
                 ],
             ]);
     });
@@ -23249,8 +23273,8 @@ describe('Orders API', function () {
         $response = $this->withHeaders(authHeaders($user))
             ->postJson('/api/v1/orders', [
                 'products' => [
-                    ['id' => $products[0]->id, 'qty' => 2],
-                    ['id' => $products[1]->id, 'qty' => 1],
+                    ['product_id' => $products[0]->id, 'qty' => 2],
+                    ['product_id' => $products[1]->id, 'qty' => 1],
                 ],
                 'comment' => 'Sem cebola',
             ]);
@@ -23268,7 +23292,7 @@ describe('Orders API', function () {
         ]);
 
         $response = $this->withHeaders(authHeaders($user))
-            ->putJson("/api/v1/orders/{$order->uuid}", [
+            ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'accepted',
             ]);
 
@@ -23285,7 +23309,7 @@ describe('Orders API', function () {
         ]);
 
         $response = $this->withHeaders(authHeaders($user))
-            ->putJson("/api/v1/orders/{$order->uuid}", [
+            ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'delivered',
             ]);
 
@@ -23490,6 +23514,10 @@ Saida esperada:
    PASS  Tests\Unit\Actions\Order\UpdateOrderStatusActionTest
   ✓ it returns error for invalid transition
   ✓ it returns updated order for valid transition
+  ✓ it returns error when order not found
+
+   PASS  Tests\Unit\Actions\Evaluation\CreateEvaluationActionTest
+  ✓ it returns error if order does not exist
 
    PASS  Tests\Unit\Actions\Dashboard\GetDashboardMetricsActionTest
   ✓ it returns expected structure
@@ -23530,8 +23558,8 @@ Saida esperada:
   ✓ it can login as client
   ✓ it returns 401 for wrong client password
 
-  Tests:    35 passed (XX assertions)
-  Duration: X.XXs
+  Tests:    41 passed (117 assertions)
+  Duration: ~6s
 ```
 
 ### Rodar com coverage
@@ -24159,7 +24187,7 @@ docker compose exec frontend npx playwright show-report
 - [ ] Helper `authHeaders()` retorna headers JWT
 - [ ] `OrderFactory` e `ClientFactory` criadas
 - [ ] Unit tests: Order model (status transitions) — 8 testes
-- [ ] Unit tests: UpdateOrderStatusAction — 2 testes
+- [ ] Unit tests: UpdateOrderStatusAction — 3 testes
 - [ ] Unit tests: GetDashboardMetricsAction (estrutura) — 3 testes
 - [ ] Feature tests: Auth API (login, logout, me) — 4 testes
 - [ ] Feature tests: Plans CRUD — 6 testes

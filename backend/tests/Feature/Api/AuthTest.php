@@ -47,6 +47,6 @@ describe('Auth API', function () {
             ->postJson('/api/v1/auth/logout');
 
         $response->assertOk()
-            ->assertJsonFragment(['message' => 'Successfully logged out']);
+            ->assertJsonFragment(['message' => 'Logout realizado com sucesso.']);
     });
 });

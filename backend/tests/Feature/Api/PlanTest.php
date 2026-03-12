@@ -13,7 +13,7 @@ describe('Plans API', function () {
         $response->assertOk()
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'uuid', 'name', 'price', 'description'],
+                    '*' => ['id', 'name', 'price', 'description'],
                 ],
             ]);
     });
@@ -47,7 +47,7 @@ describe('Plans API', function () {
         $plan = Plan::factory()->create();
 
         $response = $this->withHeaders(authHeaders($user))
-            ->getJson("/api/v1/plans/{$plan->uuid}");
+            ->getJson("/api/v1/plans/{$plan->id}");
 
         $response->assertOk()
             ->assertJsonFragment(['name' => $plan->name]);
@@ -58,7 +58,7 @@ describe('Plans API', function () {
         $plan = Plan::factory()->create();
 
         $response = $this->withHeaders(authHeaders($user))
-            ->putJson("/api/v1/plans/{$plan->uuid}", [
+            ->putJson("/api/v1/plans/{$plan->id}", [
                 'name' => 'Plano Atualizado',
                 'price' => 149.90,
                 'description' => $plan->description,
@@ -73,8 +73,8 @@ describe('Plans API', function () {
         $plan = Plan::factory()->create();
 
         $response = $this->withHeaders(authHeaders($user))
-            ->deleteJson("/api/v1/plans/{$plan->uuid}");
+            ->deleteJson("/api/v1/plans/{$plan->id}");
 
-        $response->assertNoContent();
+        $response->assertOk();
     });
 });

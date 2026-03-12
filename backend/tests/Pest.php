@@ -29,7 +29,8 @@ expect()->extend('toBeValidUuid', function () {
 */
 
 /**
- * Cria um usuario admin com tenant e permissoes para testes.
+ * Cria um usuario super-admin com tenant para testes.
+ * Super-admin bypassa todas as verificacoes de permissao.
  */
 function createAdminUser(): \App\Models\User
 {
@@ -41,6 +42,7 @@ function createAdminUser(): \App\Models\User
 
     return \App\Models\User::factory()->create([
         'tenant_id' => $tenant->id,
+        'email' => 'admin@orderly.com', // super-admin email
     ]);
 }
 

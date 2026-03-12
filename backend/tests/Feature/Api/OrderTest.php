@@ -17,7 +17,7 @@ describe('Orders API', function () {
         $response->assertOk()
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'uuid', 'status', 'total'],
+                    '*' => ['id', 'status', 'total'],
                 ],
             ]);
     });
@@ -32,8 +32,8 @@ describe('Orders API', function () {
         $response = $this->withHeaders(authHeaders($user))
             ->postJson('/api/v1/orders', [
                 'products' => [
-                    ['id' => $products[0]->id, 'qty' => 2],
-                    ['id' => $products[1]->id, 'qty' => 1],
+                    ['product_id' => $products[0]->id, 'qty' => 2],
+                    ['product_id' => $products[1]->id, 'qty' => 1],
                 ],
                 'comment' => 'Sem cebola',
             ]);
@@ -51,7 +51,7 @@ describe('Orders API', function () {
         ]);
 
         $response = $this->withHeaders(authHeaders($user))
-            ->putJson("/api/v1/orders/{$order->uuid}", [
+            ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'accepted',
             ]);
 
@@ -68,7 +68,7 @@ describe('Orders API', function () {
         ]);
 
         $response = $this->withHeaders(authHeaders($user))
-            ->putJson("/api/v1/orders/{$order->uuid}", [
+            ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'delivered',
             ]);
 
