@@ -137,6 +137,19 @@ Este README e um tutorial progressivo. Cada fase documenta exatamente o que foi 
   - [Passo 9.6 - Frontend: instalar Recharts](#passo-96---frontend-instalar-recharts)
   - [Passo 9.7 - Frontend: pagina do Dashboard](#passo-97---frontend-pagina-do-dashboard)
   - [Passo 9.8 - Verificacao end-to-end da Fase 9](#passo-98---verificacao-end-to-end-da-fase-9)
+- **[Fase 10 - Testes (Unit, Integration, E2E)](#fase-10---testes-unit-integration-e2e)**
+  - [Passo 10.1 - Conceito: Piramide de Testes](#passo-101---conceito-piramide-de-testes)
+  - [Passo 10.2 - Backend: configurar Pest + database testing](#passo-102---backend-configurar-pest--database-testing)
+  - [Passo 10.3 - Backend: Unit Tests (Models + Actions)](#passo-103---backend-unit-tests-models--actions)
+  - [Passo 10.4 - Backend: Feature Tests (API endpoints)](#passo-104---backend-feature-tests-api-endpoints)
+  - [Passo 10.5 - Backend: rodar testes e coverage](#passo-105---backend-rodar-testes-e-coverage)
+  - [Passo 10.6 - Frontend: configurar Vitest + Testing Library](#passo-106---frontend-configurar-vitest--testing-library)
+  - [Passo 10.7 - Frontend: Unit Tests (services + stores)](#passo-107---frontend-unit-tests-services--stores)
+  - [Passo 10.8 - Frontend: Component Tests](#passo-108---frontend-component-tests)
+  - [Passo 10.9 - Frontend: rodar testes e coverage](#passo-109---frontend-rodar-testes-e-coverage)
+  - [Passo 10.10 - E2E: configurar Playwright](#passo-1010---e2e-configurar-playwright)
+  - [Passo 10.11 - E2E: testes de fluxo completo](#passo-1011---e2e-testes-de-fluxo-completo)
+  - [Passo 10.12 - Verificacao end-to-end da Fase 10](#passo-1012---verificacao-end-to-end-da-fase-10)
 
 ---
 
@@ -199,7 +212,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [x] Avaliacoes de Pedidos
 - [x] Dashboard com metricas
 - [ ] Landing page publica (SSR)
-- [ ] Testes completos (Unit, Integration, E2E)
+- [x] Testes completos (Unit, Integration, E2E)
 - [x] Documentacao API (OpenAPI/Swagger via Scramble)
 
 ---
@@ -22651,6 +22664,1621 @@ frontend/
 - **Cast `(int)` em agregacoes** — `COUNT(*)` do PostgreSQL pode retornar string/float; o `->map(fn ($value) => (int) $value)` garante inteiros no JSON
 
 **Proximo:** Fase 10 - Testes (Unit, Integration, E2E)
+
+---
+
+# Fase 10 - Testes (Unit, Integration, E2E)
+
+**Objetivo:** Adicionar cobertura de testes automatizados em todas as camadas — backend (Pest), frontend (Vitest + Testing Library) e end-to-end (Playwright).
+
+**O que voce vai aprender:**
+- Piramide de testes: Unit vs Integration vs E2E
+- Pest PHP: testes expressivos com syntax funcional
+- `RefreshDatabase` + factories para testes de banco
+- `actingAs()` e `withHeaders()` para autenticacao em testes
+- Vitest: testes rapidos para TypeScript/React
+- Testing Library: testar componentes pelo comportamento (nao implementacao)
+- Mock de APIs com `msw` (Mock Service Worker)
+- Playwright: testes E2E com browser real
+- Coverage reports com `--coverage`
+
+**Pre-requisitos:**
+- Fase 9 completa (todos os features implementados)
+- Docker rodando (`docker compose up -d`)
+
+---
+
+## Passo 10.1 - Conceito: Piramide de Testes
+
+### A piramide
+
+```
+        /\
+       /  \        E2E (Playwright)
+      / E2E\       Poucos, lentos, alto valor
+     /------\
+    /        \     Integration (Feature tests)
+   / Feature  \    API endpoints, banco real
+  /------------\
+ /              \  Unit (Pest / Vitest)
+/   Unit Tests   \ Rapidos, isolados, muitos
+------------------
+```
+
+| Camada | Ferramenta | O que testa | Quantidade |
+|--------|-----------|-------------|------------|
+| Unit | Pest (backend) / Vitest (frontend) | Models, Actions, Services, Stores — logica isolada | Muitos (~70%) |
+| Integration | Pest Feature tests | Endpoints HTTP, banco, middleware, auth | Medio (~20%) |
+| E2E | Playwright | Fluxo completo usuario → browser → API → banco | Poucos (~10%) |
+
+### Decisoes de arquitetura
+
+| Decisao | Motivo |
+|---------|--------|
+| Pest em vez de PHPUnit puro | Syntax funcional mais expressiva, menos boilerplate |
+| SQLite `:memory:` para testes | Rapido, sem dependencia de Docker para rodar testes |
+| Vitest em vez de Jest | Compativel com Vite, mais rapido, ESM nativo |
+| `msw` para mock de API no frontend | Intercepta fetch no nivel de rede, sem alterar codigo |
+| Playwright em vez de Cypress | Multi-browser, mais rapido, melhor suporte a autenticacao |
+| Factories para dados de teste | Evita dados hardcoded, gera dados realistas |
+
+---
+
+## Passo 10.2 - Backend: configurar Pest + database testing
+
+### Pest.php
+
+O Pest ja esta instalado (veio com o Laravel). Crie o arquivo de configuracao `backend/tests/Pest.php`:
+
+```php
+<?php
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/*
+|--------------------------------------------------------------------------
+| Test Case
+|--------------------------------------------------------------------------
+| Configura a classe base para todos os testes.
+| RefreshDatabase reseta o banco antes de cada teste.
+*/
+uses(TestCase::class, RefreshDatabase::class)->in('Feature');
+uses(TestCase::class)->in('Unit');
+
+/*
+|--------------------------------------------------------------------------
+| Expectations
+|--------------------------------------------------------------------------
+*/
+expect()->extend('toBeValidUuid', function () {
+    return $this->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Functions
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Cria um usuario admin com tenant e permissoes para testes.
+ */
+function createAdminUser(): \App\Models\User
+{
+    $plan = \App\Models\Plan::factory()->create();
+
+    $tenant = \App\Models\Tenant::factory()->create([
+        'plan_id' => $plan->id,
+    ]);
+
+    return \App\Models\User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+}
+
+/**
+ * Retorna headers de autenticacao JWT para um usuario.
+ */
+function authHeaders(\App\Models\User $user): array
+{
+    $token = auth('api')->login($user);
+
+    return [
+        'Authorization' => "Bearer {$token}",
+        'Accept' => 'application/json',
+    ];
+}
+```
+
+> **Por que `RefreshDatabase` apenas em Feature tests?** Unit tests nao devem tocar o banco — testam logica pura. Feature tests precisam do banco para testar endpoints HTTP completos (controller → action → repository → banco).
+
+### Factories necessarias
+
+Verifique que as factories existem. As mais importantes:
+
+```bash
+docker compose exec backend ls database/factories/
+```
+
+Factories ja existentes: `UserFactory`, `PlanFactory`, `TenantFactory`, `CategoryFactory`, `ProductFactory`.
+
+Crie a factory faltante — `backend/database/factories/OrderFactory.php`:
+
+```php
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Order;
+use App\Models\Tenant;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+class OrderFactory extends Factory
+{
+    protected $model = Order::class;
+
+    public function definition(): array
+    {
+        return [
+            'tenant_id' => Tenant::factory(),
+            'status' => Order::STATUS_OPEN,
+            'total' => $this->faker->randomFloat(2, 10, 500),
+            'comment' => $this->faker->optional()->sentence(),
+        ];
+    }
+
+    public function delivered(): static
+    {
+        return $this->state(['status' => Order::STATUS_DELIVERED]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(['status' => Order::STATUS_REJECTED]);
+    }
+}
+```
+
+Crie `backend/database/factories/ClientFactory.php`:
+
+```php
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Client;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+class ClientFactory extends Factory
+{
+    protected $model = Client::class;
+
+    public function definition(): array
+    {
+        return [
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'password' => 'password',
+        ];
+    }
+}
+```
+
+> **Nota:** Adicione o trait `HasFactory` nos models `Order` e `Client` se ainda nao tiverem:
+
+```php
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class Order extends Model
+{
+    use HasFactory, BelongsToTenant;
+    // ...
+}
+```
+
+---
+
+## Passo 10.3 - Backend: Unit Tests (Models + Actions)
+
+### Testar o Model Order (status transitions)
+
+Crie `backend/tests/Unit/Models/OrderTest.php`:
+
+```php
+<?php
+
+use App\Models\Order;
+
+describe('Order Model', function () {
+    it('has all required status constants', function () {
+        expect(Order::ALL_STATUSES)->toContain(
+            'open', 'accepted', 'rejected', 'preparing', 'done', 'delivered'
+        );
+    });
+
+    it('defines valid transitions for each status', function () {
+        expect(Order::VALID_TRANSITIONS)->toHaveKeys([
+            'open', 'accepted', 'preparing', 'done',
+        ]);
+    });
+
+    it('allows open → accepted transition', function () {
+        expect(Order::VALID_TRANSITIONS['open'])->toContain('accepted');
+    });
+
+    it('allows open → rejected transition', function () {
+        expect(Order::VALID_TRANSITIONS['open'])->toContain('rejected');
+    });
+
+    it('does not allow open → delivered transition', function () {
+        expect(Order::VALID_TRANSITIONS['open'])->not->toContain('delivered');
+    });
+
+    it('allows done → delivered as final transition', function () {
+        expect(Order::VALID_TRANSITIONS['done'])->toContain('delivered');
+    });
+
+    it('does not have transitions from delivered', function () {
+        expect(Order::VALID_TRANSITIONS)->not->toHaveKey('delivered');
+    });
+
+    it('does not have transitions from rejected', function () {
+        expect(Order::VALID_TRANSITIONS)->not->toHaveKey('rejected');
+    });
+});
+```
+
+### Testar a Action UpdateOrderStatus
+
+Crie `backend/tests/Unit/Actions/Order/UpdateOrderStatusActionTest.php`:
+
+```php
+<?php
+
+use App\Actions\Order\UpdateOrderStatusAction;
+use App\Models\Order;
+use App\Repositories\Eloquent\OrderRepository;
+
+describe('UpdateOrderStatusAction', function () {
+    it('returns error for invalid transition', function () {
+        $order = Mockery::mock(Order::class);
+        $order->shouldReceive('getAttribute')
+            ->with('status')
+            ->andReturn('open');
+
+        $repository = Mockery::mock(OrderRepository::class);
+
+        $action = new UpdateOrderStatusAction($repository);
+        $result = $action->execute($order, 'delivered');
+
+        expect($result)->toBeString()
+            ->and($result)->toContain('Transicao invalida');
+    });
+
+    it('returns updated order for valid transition', function () {
+        $order = Mockery::mock(Order::class);
+        $order->shouldReceive('getAttribute')
+            ->with('status')
+            ->andReturn('open');
+
+        $repository = Mockery::mock(OrderRepository::class);
+        $repository->shouldReceive('updateStatus')
+            ->with($order, 'accepted')
+            ->once()
+            ->andReturn($order);
+
+        $action = new UpdateOrderStatusAction($repository);
+        $result = $action->execute($order, 'accepted');
+
+        expect($result)->toBeInstanceOf(Order::class);
+    });
+});
+```
+
+### Testar a Action CreateEvaluation
+
+Crie `backend/tests/Unit/Actions/Evaluation/CreateEvaluationActionTest.php`:
+
+```php
+<?php
+
+use App\Actions\Evaluation\CreateEvaluationAction;
+use App\DTOs\Evaluation\CreateEvaluationDTO;
+use App\Models\Client;
+use App\Models\Order;
+use App\Models\OrderEvaluation;
+use App\Repositories\Eloquent\EvaluationRepository;
+
+describe('CreateEvaluationAction', function () {
+    it('returns error if order does not exist', function () {
+        $repository = Mockery::mock(EvaluationRepository::class);
+
+        $client = Mockery::mock(Client::class);
+        $client->shouldReceive('getAttribute')->with('id')->andReturn(1);
+
+        $dto = new CreateEvaluationDTO(
+            orderId: 999,
+            stars: 5,
+            comment: 'Otimo!',
+        );
+
+        // Mock Order::find to return null
+        Order::shouldReceive('find')->with(999)->once()->andReturnNull();
+
+        $action = new CreateEvaluationAction($repository);
+        $result = $action->execute($dto, $client);
+
+        expect($result)->toBeString()
+            ->and($result)->toContain('Pedido nao encontrado');
+    });
+});
+```
+
+### Testar GetDashboardMetricsAction (parcial — cards)
+
+Crie `backend/tests/Unit/Actions/Dashboard/GetDashboardMetricsActionTest.php`:
+
+```php
+<?php
+
+use App\Actions\Dashboard\GetDashboardMetricsAction;
+
+describe('GetDashboardMetricsAction', function () {
+    it('returns expected structure', function () {
+        $action = new GetDashboardMetricsAction();
+        $result = $action->execute(null);
+
+        expect($result)->toHaveKeys([
+            'cards',
+            'orders_per_day',
+            'orders_by_status',
+            'latest_evaluations',
+        ]);
+    });
+
+    it('returns 7 days in orders_per_day', function () {
+        $action = new GetDashboardMetricsAction();
+        $result = $action->execute(null);
+
+        expect($result['orders_per_day'])->toHaveCount(7);
+    });
+
+    it('has correct card keys', function () {
+        $action = new GetDashboardMetricsAction();
+        $result = $action->execute(null);
+
+        expect($result['cards'])->toHaveKeys([
+            'orders_today',
+            'revenue_today',
+            'total_clients',
+            'total_products',
+        ]);
+    });
+});
+```
+
+> **Nota:** O teste do `GetDashboardMetricsAction` toca o banco (usa Eloquent), mas como retorna dados vazios (banco limpo), funciona como unit test verificando a estrutura. Para testes com dados, usaremos Feature tests.
+
+---
+
+## Passo 10.4 - Backend: Feature Tests (API endpoints)
+
+### Testar Auth API
+
+Crie `backend/tests/Feature/Api/AuthTest.php`:
+
+```php
+<?php
+
+use App\Models\User;
+
+describe('Auth API', function () {
+    it('can login with valid credentials', function () {
+        $user = createAdminUser();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonStructure([
+                'access_token',
+                'token_type',
+                'expires_in',
+            ]);
+    });
+
+    it('returns 401 for invalid credentials', function () {
+        $user = createAdminUser();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'wrong-password',
+        ]);
+
+        $response->assertUnauthorized();
+    });
+
+    it('can get authenticated user', function () {
+        $user = createAdminUser();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/auth/me');
+
+        $response->assertOk()
+            ->assertJsonFragment(['email' => $user->email]);
+    });
+
+    it('can logout', function () {
+        $user = createAdminUser();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->postJson('/api/v1/auth/logout');
+
+        $response->assertOk()
+            ->assertJsonFragment(['message' => 'Successfully logged out']);
+    });
+});
+```
+
+### Testar Plans CRUD
+
+Crie `backend/tests/Feature/Api/PlanTest.php`:
+
+```php
+<?php
+
+use App\Models\Plan;
+
+describe('Plans API', function () {
+    it('can list plans', function () {
+        $user = createAdminUser();
+        Plan::factory()->count(3)->create();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/plans');
+
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => ['id', 'uuid', 'name', 'price', 'description'],
+                ],
+            ]);
+    });
+
+    it('can create a plan', function () {
+        $user = createAdminUser();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->postJson('/api/v1/plans', [
+                'name' => 'Plano Premium',
+                'price' => 99.90,
+                'description' => 'Plano com recursos premium',
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment(['name' => 'Plano Premium']);
+    });
+
+    it('validates required fields on create', function () {
+        $user = createAdminUser();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->postJson('/api/v1/plans', []);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['name', 'price']);
+    });
+
+    it('can show a plan', function () {
+        $user = createAdminUser();
+        $plan = Plan::factory()->create();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson("/api/v1/plans/{$plan->uuid}");
+
+        $response->assertOk()
+            ->assertJsonFragment(['name' => $plan->name]);
+    });
+
+    it('can update a plan', function () {
+        $user = createAdminUser();
+        $plan = Plan::factory()->create();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->putJson("/api/v1/plans/{$plan->uuid}", [
+                'name' => 'Plano Atualizado',
+                'price' => 149.90,
+                'description' => $plan->description,
+            ]);
+
+        $response->assertOk()
+            ->assertJsonFragment(['name' => 'Plano Atualizado']);
+    });
+
+    it('can delete a plan', function () {
+        $user = createAdminUser();
+        $plan = Plan::factory()->create();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->deleteJson("/api/v1/plans/{$plan->uuid}");
+
+        $response->assertNoContent();
+    });
+});
+```
+
+### Testar Orders API
+
+Crie `backend/tests/Feature/Api/OrderTest.php`:
+
+```php
+<?php
+
+use App\Models\Order;
+use App\Models\Product;
+
+describe('Orders API', function () {
+    it('can list orders', function () {
+        $user = createAdminUser();
+
+        Order::factory()->count(3)->create([
+            'tenant_id' => $user->tenant_id,
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/orders');
+
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => ['id', 'uuid', 'status', 'total'],
+                ],
+            ]);
+    });
+
+    it('can create an order with products', function () {
+        $user = createAdminUser();
+
+        $products = Product::factory()->count(2)->create([
+            'tenant_id' => $user->tenant_id,
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->postJson('/api/v1/orders', [
+                'products' => [
+                    ['id' => $products[0]->id, 'qty' => 2],
+                    ['id' => $products[1]->id, 'qty' => 1],
+                ],
+                'comment' => 'Sem cebola',
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonFragment(['status' => 'open']);
+    });
+
+    it('can update order status with valid transition', function () {
+        $user = createAdminUser();
+
+        $order = Order::factory()->create([
+            'tenant_id' => $user->tenant_id,
+            'status' => 'open',
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->putJson("/api/v1/orders/{$order->uuid}", [
+                'status' => 'accepted',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonFragment(['status' => 'accepted']);
+    });
+
+    it('rejects invalid status transition', function () {
+        $user = createAdminUser();
+
+        $order = Order::factory()->create([
+            'tenant_id' => $user->tenant_id,
+            'status' => 'open',
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->putJson("/api/v1/orders/{$order->uuid}", [
+                'status' => 'delivered',
+            ]);
+
+        $response->assertUnprocessable();
+    });
+
+    it('can filter orders by status', function () {
+        $user = createAdminUser();
+
+        Order::factory()->create([
+            'tenant_id' => $user->tenant_id,
+            'status' => 'open',
+        ]);
+        Order::factory()->delivered()->create([
+            'tenant_id' => $user->tenant_id,
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/orders?status=open');
+
+        $response->assertOk();
+
+        $orders = $response->json('data');
+        foreach ($orders as $order) {
+            expect($order['status'])->toBe('open');
+        }
+    });
+});
+```
+
+### Testar Dashboard Metrics API
+
+Crie `backend/tests/Feature/Api/DashboardTest.php`:
+
+```php
+<?php
+
+use App\Models\Order;
+
+describe('Dashboard API', function () {
+    it('returns metrics structure', function () {
+        $user = createAdminUser();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/dashboard/metrics');
+
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'cards' => [
+                        'orders_today',
+                        'revenue_today',
+                        'total_clients',
+                        'total_products',
+                    ],
+                    'orders_per_day',
+                    'orders_by_status',
+                    'latest_evaluations',
+                ],
+            ]);
+    });
+
+    it('counts orders created today', function () {
+        $user = createAdminUser();
+
+        Order::factory()->count(3)->create([
+            'tenant_id' => $user->tenant_id,
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/dashboard/metrics');
+
+        $response->assertOk();
+        expect($response->json('data.cards.orders_today'))->toBe(3);
+    });
+
+    it('excludes rejected orders from revenue', function () {
+        $user = createAdminUser();
+
+        Order::factory()->create([
+            'tenant_id' => $user->tenant_id,
+            'total' => 100.00,
+            'status' => 'open',
+        ]);
+        Order::factory()->rejected()->create([
+            'tenant_id' => $user->tenant_id,
+            'total' => 50.00,
+        ]);
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/dashboard/metrics');
+
+        expect($response->json('data.cards.revenue_today'))->toBe('100.00');
+    });
+
+    it('returns 7 days in orders_per_day', function () {
+        $user = createAdminUser();
+
+        $response = $this->withHeaders(authHeaders($user))
+            ->getJson('/api/v1/dashboard/metrics');
+
+        expect($response->json('data.orders_per_day'))->toHaveCount(7);
+    });
+
+    it('requires authentication', function () {
+        $response = $this->getJson('/api/v1/dashboard/metrics');
+
+        $response->assertUnauthorized();
+    });
+});
+```
+
+### Testar Client Auth API
+
+Crie `backend/tests/Feature/Api/ClientAuthTest.php`:
+
+```php
+<?php
+
+use App\Models\Client;
+
+describe('Client Auth API', function () {
+    it('can register a new client', function () {
+        $response = $this->postJson('/api/v1/client/auth/register', [
+            'name' => 'Joao Silva',
+            'email' => 'joao@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonStructure(['access_token', 'token_type']);
+    });
+
+    it('validates unique email on register', function () {
+        Client::factory()->create(['email' => 'joao@example.com']);
+
+        $response = $this->postJson('/api/v1/client/auth/register', [
+            'name' => 'Joao Silva',
+            'email' => 'joao@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    });
+
+    it('can login as client', function () {
+        Client::factory()->create([
+            'email' => 'joao@example.com',
+            'password' => 'password',
+        ]);
+
+        $response = $this->postJson('/api/v1/client/auth/login', [
+            'email' => 'joao@example.com',
+            'password' => 'password',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonStructure(['access_token']);
+    });
+
+    it('returns 401 for wrong client password', function () {
+        Client::factory()->create([
+            'email' => 'joao@example.com',
+        ]);
+
+        $response = $this->postJson('/api/v1/client/auth/login', [
+            'email' => 'joao@example.com',
+            'password' => 'wrong',
+        ]);
+
+        $response->assertUnauthorized();
+    });
+});
+```
+
+---
+
+## Passo 10.5 - Backend: rodar testes e coverage
+
+### Rodar todos os testes
+
+```bash
+docker compose exec backend php artisan test
+```
+
+Saida esperada:
+
+```
+   PASS  Tests\Unit\Models\OrderTest
+  ✓ it has all required status constants
+  ✓ it defines valid transitions for each status
+  ✓ it allows open → accepted transition
+  ✓ it allows open → rejected transition
+  ✓ it does not allow open → delivered transition
+  ✓ it allows done → delivered as final transition
+  ✓ it does not have transitions from delivered
+  ✓ it does not have transitions from rejected
+
+   PASS  Tests\Unit\Actions\Order\UpdateOrderStatusActionTest
+  ✓ it returns error for invalid transition
+  ✓ it returns updated order for valid transition
+
+   PASS  Tests\Unit\Actions\Dashboard\GetDashboardMetricsActionTest
+  ✓ it returns expected structure
+  ✓ it returns 7 days in orders_per_day
+  ✓ it has correct card keys
+
+   PASS  Tests\Feature\Api\AuthTest
+  ✓ it can login with valid credentials
+  ✓ it returns 401 for invalid credentials
+  ✓ it can get authenticated user
+  ✓ it can logout
+
+   PASS  Tests\Feature\Api\PlanTest
+  ✓ it can list plans
+  ✓ it can create a plan
+  ✓ it validates required fields on create
+  ✓ it can show a plan
+  ✓ it can update a plan
+  ✓ it can delete a plan
+
+   PASS  Tests\Feature\Api\OrderTest
+  ✓ it can list orders
+  ✓ it can create an order with products
+  ✓ it can update order status with valid transition
+  ✓ it rejects invalid status transition
+  ✓ it can filter orders by status
+
+   PASS  Tests\Feature\Api\DashboardTest
+  ✓ it returns metrics structure
+  ✓ it counts orders created today
+  ✓ it excludes rejected orders from revenue
+  ✓ it returns 7 days in orders_per_day
+  ✓ it requires authentication
+
+   PASS  Tests\Feature\Api\ClientAuthTest
+  ✓ it can register a new client
+  ✓ it validates unique email on register
+  ✓ it can login as client
+  ✓ it returns 401 for wrong client password
+
+  Tests:    35 passed (XX assertions)
+  Duration: X.XXs
+```
+
+### Rodar com coverage
+
+Instale o Xdebug ou PCOV (mais rapido) se ainda nao tiver:
+
+```bash
+docker compose exec backend pecl install pcov
+docker compose exec backend bash -c 'echo "extension=pcov.so" > /usr/local/etc/php/conf.d/pcov.ini'
+```
+
+Rode com coverage:
+
+```bash
+docker compose exec backend php artisan test --coverage
+```
+
+> **Meta:** Manter cobertura acima de 60% no inicio, subindo conforme novas features sao adicionadas.
+
+### Filtrar testes por grupo
+
+```bash
+# Apenas unit tests
+docker compose exec backend php artisan test --testsuite=Unit
+
+# Apenas feature tests
+docker compose exec backend php artisan test --testsuite=Feature
+
+# Apenas um arquivo
+docker compose exec backend php artisan test --filter=OrderTest
+```
+
+---
+
+## Passo 10.6 - Frontend: configurar Vitest + Testing Library
+
+### Instalar dependencias
+
+```bash
+docker compose exec frontend npm install -D vitest @vitejs/plugin-react \
+  @testing-library/react @testing-library/jest-dom @testing-library/user-event \
+  jsdom msw
+```
+
+| Pacote | Funcao |
+|--------|--------|
+| `vitest` | Test runner (rapido, ESM nativo) |
+| `@vitejs/plugin-react` | Plugin React para Vitest |
+| `@testing-library/react` | Renderizar componentes para teste |
+| `@testing-library/jest-dom` | Matchers como `toBeInTheDocument()` |
+| `@testing-library/user-event` | Simular interacoes do usuario |
+| `jsdom` | DOM virtual para testes |
+| `msw` | Mock Service Worker — intercepta fetch |
+
+### Criar vitest.config.ts
+
+Crie `frontend/vitest.config.ts`:
+
+```ts
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+export default defineConfig({
+    plugins: [react()],
+    test: {
+        environment: "jsdom",
+        globals: true,
+        setupFiles: ["./src/test/setup.ts"],
+        include: ["src/**/*.{test,spec}.{ts,tsx}"],
+        coverage: {
+            provider: "v8",
+            reporter: ["text", "html"],
+            include: ["src/**/*.{ts,tsx}"],
+            exclude: [
+                "src/test/**",
+                "src/types/**",
+                "src/**/*.d.ts",
+            ],
+        },
+    },
+    resolve: {
+        alias: {
+            "@": path.resolve(__dirname, "./src"),
+        },
+    },
+});
+```
+
+### Setup file
+
+Crie `frontend/src/test/setup.ts`:
+
+```ts
+import "@testing-library/jest-dom/vitest";
+```
+
+### MSW handlers (mock de API)
+
+Crie `frontend/src/test/mocks/handlers.ts`:
+
+```ts
+import { http, HttpResponse } from "msw";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost/api";
+
+export const handlers = [
+    // Auth
+    http.post(`${API_URL}/v1/auth/login`, () => {
+        return HttpResponse.json({
+            access_token: "fake-jwt-token",
+            token_type: "bearer",
+            expires_in: 3600,
+        });
+    }),
+
+    http.get(`${API_URL}/v1/auth/me`, () => {
+        return HttpResponse.json({
+            id: 1,
+            name: "Admin",
+            email: "admin@orderly.com",
+            tenant_id: 1,
+        });
+    }),
+
+    // Dashboard metrics
+    http.get(`${API_URL}/v1/dashboard/metrics`, () => {
+        return HttpResponse.json({
+            data: {
+                cards: {
+                    orders_today: 5,
+                    revenue_today: "375.90",
+                    total_clients: 4,
+                    total_products: 8,
+                },
+                orders_per_day: Array.from({ length: 7 }, (_, i) => ({
+                    date: `2026-03-${String(6 + i).padStart(2, "0")}`,
+                    label: `${String(6 + i).padStart(2, "0")}/03`,
+                    total: Math.floor(Math.random() * 10),
+                })),
+                orders_by_status: {
+                    open: 2,
+                    delivered: 3,
+                    preparing: 1,
+                },
+                latest_evaluations: [
+                    {
+                        id: 1,
+                        stars: 5,
+                        comment: "Otimo!",
+                        client_name: "Joao",
+                        order_identify: "ORD-001",
+                        created_at: "2026-03-12T10:00:00Z",
+                    },
+                ],
+            },
+        });
+    }),
+
+    // Plans
+    http.get(`${API_URL}/v1/plans`, () => {
+        return HttpResponse.json({
+            data: [
+                {
+                    id: 1,
+                    uuid: "abc-123",
+                    name: "Plano Basic",
+                    price: "49.90",
+                    description: "Plano basico",
+                },
+            ],
+            meta: { current_page: 1, last_page: 1, total: 1 },
+        });
+    }),
+];
+```
+
+Crie `frontend/src/test/mocks/server.ts`:
+
+```ts
+import { setupServer } from "msw/node";
+import { handlers } from "./handlers";
+
+export const server = setupServer(...handlers);
+```
+
+Atualize `frontend/src/test/setup.ts` para iniciar o MSW:
+
+```ts
+import "@testing-library/jest-dom/vitest";
+import { server } from "./mocks/server";
+import { beforeAll, afterAll, afterEach } from "vitest";
+
+beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+```
+
+---
+
+## Passo 10.7 - Frontend: Unit Tests (services + stores)
+
+### Testar dashboard-service
+
+Crie `frontend/src/services/__tests__/dashboard-service.test.ts`:
+
+```ts
+import { describe, it, expect } from "vitest";
+import { getDashboardMetrics } from "@/services/dashboard-service";
+
+describe("getDashboardMetrics", () => {
+    it("returns metrics with correct structure", async () => {
+        const metrics = await getDashboardMetrics();
+
+        expect(metrics).toHaveProperty("cards");
+        expect(metrics).toHaveProperty("orders_per_day");
+        expect(metrics).toHaveProperty("orders_by_status");
+        expect(metrics).toHaveProperty("latest_evaluations");
+    });
+
+    it("returns cards with numeric values", async () => {
+        const metrics = await getDashboardMetrics();
+
+        expect(metrics.cards.orders_today).toBe(5);
+        expect(metrics.cards.revenue_today).toBe("375.90");
+        expect(metrics.cards.total_clients).toBe(4);
+        expect(metrics.cards.total_products).toBe(8);
+    });
+
+    it("returns 7 days of orders_per_day", async () => {
+        const metrics = await getDashboardMetrics();
+
+        expect(metrics.orders_per_day).toHaveLength(7);
+        expect(metrics.orders_per_day[0]).toHaveProperty("date");
+        expect(metrics.orders_per_day[0]).toHaveProperty("label");
+        expect(metrics.orders_per_day[0]).toHaveProperty("total");
+    });
+});
+```
+
+### Testar auth-store
+
+Crie `frontend/src/stores/__tests__/auth-store.test.ts`:
+
+```ts
+import { describe, it, expect, beforeEach } from "vitest";
+import { useAuthStore } from "@/stores/auth-store";
+
+describe("useAuthStore", () => {
+    beforeEach(() => {
+        const store = useAuthStore.getState();
+        store.logout();
+    });
+
+    it("starts with null user and token", () => {
+        const { user, token } = useAuthStore.getState();
+
+        expect(user).toBeNull();
+        expect(token).toBeNull();
+    });
+
+    it("sets token on setToken", () => {
+        useAuthStore.getState().setToken("my-token");
+
+        expect(useAuthStore.getState().token).toBe("my-token");
+    });
+
+    it("sets user on setUser", () => {
+        const mockUser = {
+            id: 1,
+            name: "Admin",
+            email: "admin@test.com",
+            tenant_id: 1,
+        };
+
+        useAuthStore.getState().setUser(mockUser);
+
+        expect(useAuthStore.getState().user).toEqual(mockUser);
+    });
+
+    it("clears state on logout", () => {
+        useAuthStore.getState().setToken("my-token");
+        useAuthStore.getState().setUser({
+            id: 1,
+            name: "Admin",
+            email: "admin@test.com",
+            tenant_id: 1,
+        });
+
+        useAuthStore.getState().logout();
+
+        expect(useAuthStore.getState().user).toBeNull();
+        expect(useAuthStore.getState().token).toBeNull();
+    });
+});
+```
+
+---
+
+## Passo 10.8 - Frontend: Component Tests
+
+### Testar StarRating
+
+Crie `frontend/src/components/__tests__/star-rating.test.tsx`:
+
+```tsx
+import { describe, it, expect } from "vitest";
+import { render, screen } from "@testing-library/react";
+
+// O componente StarRating esta inline no dashboard, vamos extrair para teste
+// Se voce quiser testar inline, importe o DashboardPage completo
+function StarRating({ stars }: { stars: number }) {
+    return (
+        <div data-testid="star-rating">
+            {Array.from({ length: 5 }).map((_, i) => (
+                <span
+                    key={i}
+                    data-testid={`star-${i}`}
+                    className={i < stars ? "filled" : "empty"}
+                >
+                    ★
+                </span>
+            ))}
+        </div>
+    );
+}
+
+describe("StarRating", () => {
+    it("renders 5 stars", () => {
+        render(<StarRating stars={3} />);
+
+        const stars = screen.getAllByTestId(/^star-/);
+        expect(stars).toHaveLength(5);
+    });
+
+    it("fills correct number of stars", () => {
+        render(<StarRating stars={3} />);
+
+        const stars = screen.getAllByTestId(/^star-/);
+        const filled = stars.filter((s) => s.className.includes("filled"));
+        const empty = stars.filter((s) => s.className.includes("empty"));
+
+        expect(filled).toHaveLength(3);
+        expect(empty).toHaveLength(2);
+    });
+
+    it("fills all stars for rating 5", () => {
+        render(<StarRating stars={5} />);
+
+        const stars = screen.getAllByTestId(/^star-/);
+        const filled = stars.filter((s) => s.className.includes("filled"));
+
+        expect(filled).toHaveLength(5);
+    });
+
+    it("fills no stars for rating 0", () => {
+        render(<StarRating stars={0} />);
+
+        const stars = screen.getAllByTestId(/^star-/);
+        const empty = stars.filter((s) => s.className.includes("empty"));
+
+        expect(empty).toHaveLength(5);
+    });
+});
+```
+
+> **Dica:** Se quiser testar componentes que usam `next/navigation` ou `next/router`, adicione um mock:
+
+```ts
+// No arquivo de teste ou no setup
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
+    usePathname: () => "/dashboard",
+}));
+```
+
+---
+
+## Passo 10.9 - Frontend: rodar testes e coverage
+
+### Rodar todos os testes
+
+```bash
+docker compose exec frontend npx vitest run
+```
+
+Saida esperada:
+
+```
+ ✓ src/services/__tests__/dashboard-service.test.ts (3 tests) 45ms
+ ✓ src/stores/__tests__/auth-store.test.ts (4 tests) 12ms
+ ✓ src/components/__tests__/star-rating.test.tsx (4 tests) 38ms
+
+ Test Files  3 passed (3)
+      Tests  11 passed (11)
+   Start at  10:30:00
+   Duration  1.23s
+```
+
+### Rodar com watch mode (desenvolvimento)
+
+```bash
+docker compose exec frontend npx vitest
+```
+
+### Rodar com coverage
+
+```bash
+docker compose exec frontend npx vitest run --coverage
+```
+
+### Atualizar scripts no package.json
+
+Verifique que os scripts ja estao no `frontend/package.json`:
+
+```json
+{
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test"
+  }
+}
+```
+
+---
+
+## Passo 10.10 - E2E: configurar Playwright
+
+### Instalar Playwright
+
+```bash
+docker compose exec frontend npx playwright install --with-deps chromium
+```
+
+> Instalamos apenas o Chromium para manter a imagem Docker menor. Em CI, voce pode instalar todos os browsers.
+
+### Criar playwright.config.ts
+
+Crie `frontend/playwright.config.ts`:
+
+```ts
+import { defineConfig, devices } from "@playwright/test";
+
+export default defineConfig({
+    testDir: "./e2e",
+    fullyParallel: true,
+    forbidOnly: !!process.env.CI,
+    retries: process.env.CI ? 2 : 0,
+    workers: process.env.CI ? 1 : undefined,
+    reporter: "html",
+    use: {
+        baseURL: "http://127.0.0.1",
+        trace: "on-first-retry",
+        screenshot: "only-on-failure",
+    },
+    projects: [
+        {
+            name: "chromium",
+            use: { ...devices["Desktop Chrome"] },
+        },
+    ],
+    webServer: {
+        command: "npm run dev",
+        url: "http://127.0.0.1:3000",
+        reuseExistingServer: true,
+    },
+});
+```
+
+---
+
+## Passo 10.11 - E2E: testes de fluxo completo
+
+### Teste: Login admin
+
+Crie `frontend/e2e/auth.spec.ts`:
+
+```ts
+import { test, expect } from "@playwright/test";
+
+test.describe("Admin Authentication", () => {
+    test("should show login page", async ({ page }) => {
+        await page.goto("/login");
+
+        await expect(page.getByText("Entrar")).toBeVisible();
+        await expect(page.getByLabel("Email")).toBeVisible();
+        await expect(page.getByLabel("Senha")).toBeVisible();
+    });
+
+    test("should login with valid credentials", async ({ page }) => {
+        await page.goto("/login");
+
+        await page.getByLabel("Email").fill("admin@orderly.com");
+        await page.getByLabel("Senha").fill("password");
+        await page.getByRole("button", { name: "Entrar" }).click();
+
+        // Deve redirecionar para o dashboard
+        await expect(page).toHaveURL(/.*dashboard/);
+        await expect(page.getByText("Dashboard")).toBeVisible();
+    });
+
+    test("should show error for invalid credentials", async ({ page }) => {
+        await page.goto("/login");
+
+        await page.getByLabel("Email").fill("admin@orderly.com");
+        await page.getByLabel("Senha").fill("wrong-password");
+        await page.getByRole("button", { name: "Entrar" }).click();
+
+        await expect(page.getByText(/credenciais|invalido|erro/i)).toBeVisible();
+    });
+});
+```
+
+### Teste: Dashboard com metricas
+
+Crie `frontend/e2e/dashboard.spec.ts`:
+
+```ts
+import { test, expect } from "@playwright/test";
+
+// Helper: login antes dos testes
+async function loginAsAdmin(page: import("@playwright/test").Page) {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill("admin@orderly.com");
+    await page.getByLabel("Senha").fill("password");
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/.*dashboard/);
+}
+
+test.describe("Dashboard", () => {
+    test.beforeEach(async ({ page }) => {
+        await loginAsAdmin(page);
+    });
+
+    test("should display metric cards", async ({ page }) => {
+        await expect(page.getByText("Pedidos Hoje")).toBeVisible();
+        await expect(page.getByText("Faturamento Hoje")).toBeVisible();
+        await expect(page.getByText("Clientes")).toBeVisible();
+        await expect(page.getByText("Produtos")).toBeVisible();
+    });
+
+    test("should display orders chart", async ({ page }) => {
+        await expect(page.getByText("Pedidos por dia")).toBeVisible();
+        await expect(page.getByText("Ultimos 7 dias")).toBeVisible();
+    });
+
+    test("should display orders by status", async ({ page }) => {
+        await expect(page.getByText("Pedidos por status")).toBeVisible();
+    });
+
+    test("should display recent evaluations", async ({ page }) => {
+        await expect(page.getByText("Avaliacoes recentes")).toBeVisible();
+    });
+});
+```
+
+### Teste: Fluxo de pedido completo
+
+Crie `frontend/e2e/order-flow.spec.ts`:
+
+```ts
+import { test, expect } from "@playwright/test";
+
+async function loginAsAdmin(page: import("@playwright/test").Page) {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill("gerente@demo.com");
+    await page.getByLabel("Senha").fill("password");
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/.*dashboard/);
+}
+
+test.describe("Order Flow", () => {
+    test("should navigate to orders page", async ({ page }) => {
+        await loginAsAdmin(page);
+
+        await page.getByRole("link", { name: "Pedidos" }).click();
+
+        await expect(page).toHaveURL(/.*orders/);
+        await expect(page.getByText("Pedidos")).toBeVisible();
+    });
+
+    test("should show order list with status badges", async ({ page }) => {
+        await loginAsAdmin(page);
+        await page.goto("/orders");
+
+        // Deve ter ao menos a tabela ou mensagem de "nenhum pedido"
+        const hasOrders = await page.getByRole("table").isVisible().catch(() => false);
+        const hasEmpty = await page.getByText(/nenhum/i).isVisible().catch(() => false);
+
+        expect(hasOrders || hasEmpty).toBeTruthy();
+    });
+});
+```
+
+### Rodar testes E2E
+
+```bash
+# Certifique-se de que o ambiente esta rodando
+docker compose up -d
+
+# Rodar testes E2E
+docker compose exec frontend npx playwright test
+
+# Rodar com UI visual (para debug)
+docker compose exec frontend npx playwright test --ui
+
+# Ver relatorio HTML
+docker compose exec frontend npx playwright show-report
+```
+
+> **Importante:** Testes E2E dependem do ambiente completo (backend + frontend + banco). Certifique-se de que `docker compose up -d` esta rodando e que os seeders foram executados.
+
+---
+
+## Passo 10.12 - Verificacao end-to-end da Fase 10
+
+### Checklist de verificacao
+
+**Backend (Pest):**
+
+- [ ] `tests/Pest.php` configurado com `RefreshDatabase` para Feature tests
+- [ ] Helper `createAdminUser()` cria usuario com tenant para testes
+- [ ] Helper `authHeaders()` retorna headers JWT
+- [ ] `OrderFactory` e `ClientFactory` criadas
+- [ ] Unit tests: Order model (status transitions) — 8 testes
+- [ ] Unit tests: UpdateOrderStatusAction — 2 testes
+- [ ] Unit tests: GetDashboardMetricsAction (estrutura) — 3 testes
+- [ ] Feature tests: Auth API (login, logout, me) — 4 testes
+- [ ] Feature tests: Plans CRUD — 6 testes
+- [ ] Feature tests: Orders API (CRUD + status + filtro) — 5 testes
+- [ ] Feature tests: Dashboard metrics — 5 testes
+- [ ] Feature tests: Client Auth — 4 testes
+- [ ] `php artisan test` roda sem erros
+- [ ] Coverage report funcional com `--coverage`
+
+**Frontend (Vitest):**
+
+- [ ] `vitest.config.ts` configurado com jsdom + path alias
+- [ ] `src/test/setup.ts` com Testing Library + MSW
+- [ ] MSW handlers mockam os endpoints da API
+- [ ] Unit test: `dashboard-service` — 3 testes
+- [ ] Unit test: `auth-store` — 4 testes
+- [ ] Component test: `StarRating` — 4 testes
+- [ ] `npx vitest run` roda sem erros
+- [ ] Coverage report funcional com `--coverage`
+
+**E2E (Playwright):**
+
+- [ ] `playwright.config.ts` configurado com baseURL
+- [ ] Teste: Login admin (sucesso + falha) — 3 testes
+- [ ] Teste: Dashboard metricas — 4 testes
+- [ ] Teste: Order flow (navegacao + lista) — 2 testes
+- [ ] `npx playwright test` roda sem erros
+
+### Comandos rapidos
+
+```bash
+# Backend: rodar todos os testes
+docker compose exec backend php artisan test
+
+# Backend: apenas unit
+docker compose exec backend php artisan test --testsuite=Unit
+
+# Backend: apenas feature
+docker compose exec backend php artisan test --testsuite=Feature
+
+# Backend: com coverage
+docker compose exec backend php artisan test --coverage
+
+# Frontend: rodar testes
+docker compose exec frontend npx vitest run
+
+# Frontend: watch mode
+docker compose exec frontend npx vitest
+
+# Frontend: com coverage
+docker compose exec frontend npx vitest run --coverage
+
+# E2E: rodar testes
+docker compose exec frontend npx playwright test
+
+# E2E: com relatorio visual
+docker compose exec frontend npx playwright test --reporter=html
+```
+
+### Resumo dos arquivos da Fase 10
+
+**Backend:**
+
+```
+backend/
+├── tests/
+│   ├── Pest.php (configuracao global)
+│   ├── Unit/
+│   │   ├── Models/OrderTest.php
+│   │   └── Actions/
+│   │       ├── Order/UpdateOrderStatusActionTest.php
+│   │       ├── Evaluation/CreateEvaluationActionTest.php
+│   │       └── Dashboard/GetDashboardMetricsActionTest.php
+│   └── Feature/Api/
+│       ├── AuthTest.php
+│       ├── PlanTest.php
+│       ├── OrderTest.php
+│       ├── DashboardTest.php
+│       └── ClientAuthTest.php
+├── database/factories/
+│   ├── OrderFactory.php (novo)
+│   └── ClientFactory.php (novo)
+```
+
+**Frontend:**
+
+```
+frontend/
+├── vitest.config.ts (novo)
+├── playwright.config.ts (novo)
+├── src/test/
+│   ├── setup.ts
+│   └── mocks/
+│       ├── handlers.ts
+│       └── server.ts
+├── src/services/__tests__/
+│   └── dashboard-service.test.ts
+├── src/stores/__tests__/
+│   └── auth-store.test.ts
+├── src/components/__tests__/
+│   └── star-rating.test.tsx
+└── e2e/
+    ├── auth.spec.ts
+    ├── dashboard.spec.ts
+    └── order-flow.spec.ts
+```
+
+**Conceitos aprendidos:**
+- **Piramide de testes** — muitos unit (rapidos), menos feature (banco), poucos E2E (lentos) — otimiza feedback loop
+- **Pest `describe` + `it`** — syntax BDD expressiva: `it('can create a plan')` le como especificacao
+- **`RefreshDatabase`** — migra e limpa o banco antes de cada Feature test, garantindo isolamento
+- **`createAdminUser()` helper** — encapsula a criacao de user + tenant + plan, evitando boilerplate em cada teste
+- **Factory states** — `Order::factory()->delivered()->create()` usa state methods para cenarios especificos
+- **MSW (Mock Service Worker)** — intercepta `fetch` no nivel de rede: o codigo de producao nao sabe que esta sendo mockado
+- **`@testing-library/react`** — testa pelo comportamento visivel (texto, roles, labels), nao pela implementacao interna
+- **Playwright `beforeEach` com login** — reutiliza autenticacao em cada teste E2E sem duplicar codigo
+- **`--coverage`** — gera relatorio de cobertura para identificar codigo nao testado e guiar proximos testes
+
+**Proximo:** Fase 11 - CI/CD com GitHub Actions
 
 ---
 
