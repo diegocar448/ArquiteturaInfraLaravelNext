@@ -23567,9 +23567,11 @@ Saida esperada:
 Instale o Xdebug ou PCOV (mais rapido) se ainda nao tiver:
 
 ```bash
-docker compose exec backend pecl install pcov
-docker compose exec backend bash -c 'echo "extension=pcov.so" > /usr/local/etc/php/conf.d/pcov.ini'
+# Instalar dependencias de compilacao (Alpine) + PCOV
+docker compose exec backend sh -c "apk add --no-cache autoconf gcc g++ make && pecl install pcov && echo 'extension=pcov.so' > /usr/local/etc/php/conf.d/pcov.ini"
 ```
+
+> **Nota:** O container usa Alpine Linux, entao usamos `apk` em vez de `apt-get`. O `autoconf`, `gcc`, `g++` e `make` sao necessarios para compilar a extensao PCOV.
 
 Rode com coverage:
 
