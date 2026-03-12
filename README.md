@@ -22068,6 +22068,7 @@ class GetDashboardMetricsAction
 
         return $query->get()
             ->pluck('total', 'status')
+            ->map(fn ($value) => (int) $value)
             ->toArray();
     }
 
@@ -22481,7 +22482,7 @@ export default function DashboardPage() {
                             />
                             <Bar
                                 dataKey="total"
-                                fill="hsl(var(--primary))"
+                                fill="#3b82f6"
                                 radius={[4, 4, 0, 0]}
                             />
                         </BarChart>
@@ -22646,7 +22647,8 @@ frontend/
 - **Preenchimento de gaps temporais** — dias sem dados precisam aparecer como `0` no grafico, nao simplesmente omitidos
 - **`DB::raw()` em selects** — necessario para `DATE(created_at)` e `COUNT(*)`, funcoes SQL puras
 - **Recharts** — biblioteca declarativa de graficos para React com `ResponsiveContainer` para responsividade
-- **`hsl(var(--primary))`** — reutiliza a cor primaria do tema shadcn/ui no grafico, mantendo consistencia visual
+- **`fill="#3b82f6"`** — cor fixa (Tailwind `blue-500`) porque SVG inline do Recharts nao resolve variaveis CSS como `hsl(var(--primary))`
+- **Cast `(int)` em agregacoes** — `COUNT(*)` do PostgreSQL pode retornar string/float; o `->map(fn ($value) => (int) $value)` garante inteiros no JSON
 
 **Proximo:** Fase 10 - Testes (Unit, Integration, E2E)
 

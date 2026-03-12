@@ -96,6 +96,7 @@ class GetDashboardMetricsAction
 
         return $query->get()
             ->pluck('total', 'status')
+            ->map(fn ($value) => (int) $value)
             ->toArray();
     }
 
