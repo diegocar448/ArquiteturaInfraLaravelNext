@@ -20,6 +20,8 @@ use App\Repositories\Contracts\ProductRepositoryInterface;
 use App\Repositories\Eloquent\ProductRepository;
 use App\Repositories\Contracts\TableRepositoryInterface;
 use App\Repositories\Eloquent\TableRepository;
+use App\Repositories\Contracts\OrderRepositoryInterface;
+use App\Repositories\Eloquent\OrderRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -34,6 +36,7 @@ class RepositoryServiceProvider extends ServiceProvider
         CategoryRepositoryInterface::class => CategoryRepository::class,
         ProductRepositoryInterface::class => ProductRepository::class,
         TableRepositoryInterface::class => TableRepository::class,
+        OrderRepositoryInterface::class => OrderRepository::class,
     ];
 
     public function register(): void
