@@ -123,6 +123,17 @@ Route::prefix('v1')->group(function () {
             // Table QR Code
             Route::get('tables/{table}/qrcode', [TableController::class, 'qrcode'])
                 ->middleware('permission:tables.view');
+
+            
+            // Orders CRUD
+            Route::apiResource('orders', OrderController::class)
+                ->middleware([
+                    'index' => 'permission:orders.view',
+                    'show' => 'permission:orders.view',
+                    'store' => 'permission:orders.create',
+                    'update' => 'permission:orders.edit',
+                    'destroy' => 'permission:orders.delete',
+                ]);
         });
     });
 });
