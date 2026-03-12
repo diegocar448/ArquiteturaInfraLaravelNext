@@ -22,6 +22,8 @@ use App\Repositories\Contracts\TableRepositoryInterface;
 use App\Repositories\Eloquent\TableRepository;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 use App\Repositories\Eloquent\OrderRepository;
+use App\Repositories\Contracts\EvaluationRepositoryInterface;
+use App\Repositories\Eloquent\EvaluationRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -37,6 +39,7 @@ class RepositoryServiceProvider extends ServiceProvider
         ProductRepositoryInterface::class => ProductRepository::class,
         TableRepositoryInterface::class => TableRepository::class,
         OrderRepositoryInterface::class => OrderRepository::class,
+        EvaluationRepositoryInterface::class => EvaluationRepository::class,
     ];
 
     public function register(): void

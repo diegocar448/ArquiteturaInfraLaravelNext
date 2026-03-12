@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[ObservedBy(OrderObserver::class)]
 class Order extends Model
@@ -77,5 +78,10 @@ class Order extends Model
         return $this->products->sum(function ($product) {
             return $product->pivot->qty * $product->pivot->price;
         });
+    }
+
+    public function evaluation(): HasOne
+    {
+        return $this->hasOne(OrderEvaluation::class);
     }
 }
