@@ -24009,11 +24009,21 @@ Verifique que os scripts ja estao no `frontend/package.json`:
 
 ### Instalar Playwright
 
+> **Importante:** Playwright nao roda dentro de containers Alpine (nosso frontend usa Alpine). Ele precisa de dependencias de sistema (glibc, bibliotecas graficas) que so existem em distros como Ubuntu/Debian. Por isso, testes E2E rodam na **maquina host** ou no **CI (GitHub Actions)** com a imagem oficial do Playwright.
+
+**Opcao A — Na maquina host (WSL/Linux/Mac):**
+
 ```bash
-docker compose exec frontend npx playwright install --with-deps chromium
+cd frontend
+npm install -D @playwright/test
+npx playwright install --with-deps chromium
 ```
 
-> Instalamos apenas o Chromium para manter a imagem Docker menor. Em CI, voce pode instalar todos os browsers.
+**Opcao B — No CI (GitHub Actions) — recomendado:**
+
+Os testes E2E serao configurados na Fase 11 (CI/CD) usando a imagem `mcr.microsoft.com/playwright:v1.58.2-noble` que ja vem com os browsers instalados.
+
+> Se voce quiser rodar E2E localmente sem instalar Playwright na maquina host, pode criar um container dedicado com a imagem oficial: `docker run --rm -v $(pwd)/frontend:/app -w /app mcr.microsoft.com/playwright:v1.58.2-noble npx playwright test`
 
 ### Criar playwright.config.ts
 
@@ -24179,17 +24189,18 @@ test.describe("Order Flow", () => {
 # Certifique-se de que o ambiente esta rodando
 docker compose up -d
 
-# Rodar testes E2E
-docker compose exec frontend npx playwright test
+# Rodar testes E2E (na maquina host, nao no container)
+cd frontend
+npx playwright test
 
 # Rodar com UI visual (para debug)
-docker compose exec frontend npx playwright test --ui
+npx playwright test --ui
 
 # Ver relatorio HTML
-docker compose exec frontend npx playwright show-report
+npx playwright show-report
 ```
 
-> **Importante:** Testes E2E dependem do ambiente completo (backend + frontend + banco). Certifique-se de que `docker compose up -d` esta rodando e que os seeders foram executados.
+> **Importante:** Testes E2E dependem do ambiente completo (backend + frontend + banco). Certifique-se de que `docker compose up -d` esta rodando e que os seeders foram executados. Os testes E2E rodam na maquina host apontando para `http://127.0.0.1` (Nginx).
 
 ---
 
@@ -24257,11 +24268,11 @@ docker compose exec frontend npx vitest
 # Frontend: com coverage
 docker compose exec frontend npx vitest run --coverage
 
-# E2E: rodar testes
-docker compose exec frontend npx playwright test
+# E2E: rodar testes (na maquina host)
+cd frontend && npx playwright test
 
-# E2E: com relatorio visual
-docker compose exec frontend npx playwright test --reporter=html
+# E2E: com relatorio visual (na maquina host)
+cd frontend && npx playwright test --reporter=html
 ```
 
 ### Resumo dos arquivos da Fase 10
