@@ -171,8 +171,8 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [x] Planos de assinatura (CRUD + detalhes)
 - [x] ACL dupla camada (Plan->Profile->Permission + User->Role->Permission)
 - [x] Catalogo: Categories + Products (CRUD, tenant-scoped)
-- [ ] Mesas com QR Code
-- [ ] Sistema de Pedidos com Kafka
+- [x] Mesas com QR Code
+- [x] Sistema de Pedidos
 - [ ] Autenticacao de Clientes (JWT)
 - [ ] Avaliacoes de Pedidos
 - [ ] Dashboard com metricas
@@ -19108,6 +19108,76 @@ export default function OrderDetailPage() {
 }
 ```
 
+### Loading global (UX)
+
+Ao navegar entre paginas, a aplicacao pode parecer "congelada" enquanto carrega. Vamos adicionar duas camadas de feedback visual:
+
+**1. Progress bar no topo (nextjs-toploader):**
+
+Instale a dependencia:
+
+```bash
+docker compose exec frontend npm install nextjs-toploader
+```
+
+Atualize `frontend/src/app/layout.tsx` para incluir o componente:
+
+```tsx
+import type { Metadata } from "next";
+import NextTopLoader from "nextjs-toploader";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Orderly - Plataforma SaaS de Delivery",
+  description: "Sistema completo de gestao para restaurantes e delivery",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="pt-BR" className="dark">
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <NextTopLoader color="#3b82f6" showSpinner={false} />
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+> **`NextTopLoader`** renderiza uma barra de progresso fina no topo da pagina (estilo YouTube/GitHub) durante toda navegacao client-side. `showSpinner={false}` remove o spinner circular, mantendo apenas a barra.
+
+**2. Skeleton loading para conteudo (loading.tsx):**
+
+Crie `frontend/src/app/(admin)/loading.tsx`:
+
+```tsx
+import { Skeleton } from "@/components/ui/skeleton";
+
+export default function AdminLoading() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+> **`loading.tsx`** e uma convencao do Next.js App Router. Quando colocado dentro de uma pasta de layout, ele e exibido automaticamente como fallback durante a navegacao entre paginas filhas. Nao precisa de nenhum import manual — o Next.js integra via React Suspense.
+
+**Resultado:** Ao clicar em qualquer item da sidebar:
+1. Barra azul aparece no topo imediatamente (feedback instantaneo)
+2. Skeletons pulsantes aparecem na area de conteudo
+3. Quando a pagina carrega, ambos desaparecem
+
 ---
 
 ## Passo 7.9 - Frontend: dialog de criacao de pedido
@@ -19480,10 +19550,14 @@ backend/
 frontend/src/
 ├── types/order.ts
 ├── services/order-service.ts
-├── app/(admin)/orders/
-│   ├── page.tsx                    (listagem + filtro)
-│   ├── [id]/page.tsx              (detalhes)
-│   └── new/page.tsx               (criacao com carrinho)
+├── app/
+│   ├── layout.tsx                  (modificado — NextTopLoader)
+│   └── (admin)/
+│       ├── loading.tsx             (skeleton loading global)
+│       └── orders/
+│           ├── page.tsx            (listagem + filtro)
+│           ├── [id]/page.tsx       (detalhes)
+│           └── new/page.tsx        (criacao com carrinho)
 └── components/orders/
     ├── order-status-badge.tsx      (badge colorido)
     ├── update-status-dialog.tsx    (transicao de status)
@@ -19499,6 +19573,9 @@ frontend/src/
 - **`withoutGlobalScopes()`** — necessario para consultas que devem ignorar o TenantScope (ex: gerar sequence)
 - **Carrinho client-side** — state local com `CartItem[]` para montar pedidos antes de enviar ao backend
 - **Filtro por query parameter** — `?status=open` filtra no backend, `Select` controla no frontend
+- **`loading.tsx`** — convencao do Next.js App Router que exibe fallback automatico (via React Suspense) durante navegacao entre paginas
+- **`nextjs-toploader`** — progress bar no topo da pagina para feedback visual imediato durante navegacao client-side
+- **FormRequest para query params** — o Scramble gera campos no Swagger a partir das `rules()` do FormRequest (nao suporta `@queryParam`)
 
 **Proximo:** Fase 8 - Autenticacao de Clientes + Avaliacoes
 
