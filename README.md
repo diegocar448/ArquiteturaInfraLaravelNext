@@ -126,7 +126,8 @@ Este README e um tutorial progressivo. Cada fase documenta exatamente o que foi 
   - [Passo 8.8 - Seeders + teste da API](#passo-88---seeders--teste-da-api)
   - [Passo 8.9 - Frontend: tipos TypeScript + servicos](#passo-89---frontend-tipos-typescript--servicos)
   - [Passo 8.10 - Frontend: pagina de Avaliacoes (admin)](#passo-810---frontend-pagina-de-avaliacoes-admin)
-  - [Passo 8.11 - Verificacao end-to-end da Fase 8](#passo-811---verificacao-end-to-end-da-fase-8)
+  - [Passo 8.11 - Frontend: Client Auth Store + paginas de login/cadastro/pedidos](#passo-811---frontend-client-auth-store--paginas-de-logincadastropedidos)
+  - [Passo 8.12 - Verificacao end-to-end da Fase 8](#passo-812---verificacao-end-to-end-da-fase-8)
 
 ---
 
@@ -21081,7 +21082,693 @@ A sidebar ja tem o link "Avaliacoes" no grupo **Operacao** (configurado no Passo
 
 ---
 
-## Passo 8.11 - Verificacao end-to-end da Fase 8
+## Passo 8.11 - Frontend: Client Auth Store + paginas de login/cadastro/pedidos
+
+Ate agora, o login em `/login` e exclusivo para **admins/gerentes** (guard `api`). Os **clientes** precisam de um fluxo separado com guard `client`, cookie proprio e paginas dedicadas.
+
+### Store de autenticacao do cliente
+
+Crie `frontend/src/stores/client-auth-store.ts`:
+
+```ts
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { ApiError } from "@/lib/api";
+
+// Cookie separado para nao conflitar com o admin
+function setClientTokenCookie(token: string) {
+    document.cookie = `client_token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
+}
+
+function removeClientTokenCookie() {
+    document.cookie = "client_token=; path=/; max-age=0";
+}
+
+interface ClientUser {
+    id: number;
+    uuid: string;
+    name: string;
+    email: string;
+}
+
+interface ClientAuthState {
+    token: string | null;
+    client: ClientUser | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    register: (name: string, email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
+    fetchClient: () => Promise<void>;
+    clear: () => void;
+}
+
+interface ClientLoginResponse {
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    client: ClientUser;
+}
+
+interface ClientMeResponse {
+    data: ClientUser;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+/** Fetch wrapper que usa o token do cliente (guard client) */
+async function clientApi<T>(
+    endpoint: string,
+    token: string | null,
+    options: RequestInit = {},
+): Promise<T> {
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(options.headers as Record<string, string>),
+    };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new ApiError(
+            response.status,
+            data?.message || "Erro na requisicao",
+            data,
+        );
+    }
+
+    return response.json();
+}
+
+export const useClientAuthStore = create<ClientAuthState>()(
+    persist(
+        (set, get) => ({
+            token: null,
+            client: null,
+            isAuthenticated: false,
+            isLoading: false,
+
+            login: async (email: string, password: string) => {
+                set({ isLoading: true });
+                try {
+                    const response = await clientApi<ClientLoginResponse>(
+                        "/v1/client/auth/login",
+                        null,
+                        {
+                            method: "POST",
+                            body: JSON.stringify({ email, password }),
+                        },
+                    );
+
+                    setClientTokenCookie(response.access_token);
+                    set({
+                        token: response.access_token,
+                        client: response.client,
+                        isAuthenticated: true,
+                        isLoading: false,
+                    });
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            register: async (
+                name: string,
+                email: string,
+                password: string,
+            ) => {
+                set({ isLoading: true });
+                try {
+                    const response = await clientApi<ClientLoginResponse>(
+                        "/v1/client/auth/register",
+                        null,
+                        {
+                            method: "POST",
+                            body: JSON.stringify({ name, email, password }),
+                        },
+                    );
+
+                    setClientTokenCookie(response.access_token);
+                    set({
+                        token: response.access_token,
+                        client: response.client,
+                        isAuthenticated: true,
+                        isLoading: false,
+                    });
+                } catch (error) {
+                    set({ isLoading: false });
+                    throw error;
+                }
+            },
+
+            fetchClient: async () => {
+                try {
+                    const response = await clientApi<ClientMeResponse>(
+                        "/v1/client/auth/me",
+                        get().token,
+                    );
+                    set({ client: response.data });
+                } catch {
+                    get().clear();
+                }
+            },
+
+            logout: async () => {
+                try {
+                    await clientApi("/v1/client/auth/logout", get().token, {
+                        method: "POST",
+                    });
+                } catch {
+                    // Limpar mesmo se der erro no backend
+                }
+                get().clear();
+            },
+
+            clear: () => {
+                removeClientTokenCookie();
+                set({
+                    token: null,
+                    client: null,
+                    isAuthenticated: false,
+                });
+            },
+        }),
+        {
+            name: "client-auth-storage",
+            partialize: (state) => ({ token: state.token }),
+        },
+    ),
+);
+```
+
+> **Por que um store separado?** O `apiClient` global em `lib/api.ts` le o token do `auth-storage` (admin). Se reutilizassemos o mesmo store, o token do cliente sobrescreveria o do admin (e vice-versa). Com stores separados (`auth-storage` vs `client-auth-storage`) e cookies separados (`token` vs `client_token`), as sessoes sao completamente independentes.
+
+### Pagina de login do cliente
+
+Crie `frontend/src/app/client/login/page.tsx`:
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useClientAuthStore } from "@/stores/client-auth-store";
+import { ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+
+const loginSchema = z.object({
+    email: z.string().email("Informe um email valido"),
+    password: z.string().min(6, "A senha deve ter no minimo 6 caracteres"),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+
+export default function ClientLoginPage() {
+    const router = useRouter();
+    const { login, isLoading } = useClientAuthStore();
+    const [error, setError] = useState<string | null>(null);
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<LoginForm>({
+        resolver: zodResolver(loginSchema),
+    });
+
+    const onSubmit = async (data: LoginForm) => {
+        setError(null);
+        try {
+            await login(data.email, data.password);
+            router.push("/client/pedidos");
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setError(err.message);
+            } else {
+                setError("Erro ao conectar com o servidor.");
+            }
+        }
+    };
+
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <CardTitle className="text-2xl font-bold">
+                        Orderly
+                    </CardTitle>
+                    <CardDescription>
+                        Acesse sua conta de cliente
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form
+                        onSubmit={handleSubmit(onSubmit)}
+                        className="space-y-4"
+                    >
+                        {error && (
+                            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="joao@email.com"
+                                {...register("email")}
+                            />
+                            {errors.email && (
+                                <p className="text-sm text-destructive">
+                                    {errors.email.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Senha</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="••••••••"
+                                {...register("password")}
+                            />
+                            {errors.password && (
+                                <p className="text-sm text-destructive">
+                                    {errors.password.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Entrando..." : "Entrar"}
+                        </Button>
+                    </form>
+                </CardContent>
+                <CardFooter className="justify-center">
+                    <p className="text-sm text-muted-foreground">
+                        Nao tem conta?{" "}
+                        <Link
+                            href="/client/register"
+                            className="text-primary underline-offset-4 hover:underline"
+                        >
+                            Cadastre-se
+                        </Link>
+                    </p>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+}
+```
+
+### Pagina de cadastro do cliente
+
+Crie `frontend/src/app/client/register/page.tsx`:
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useClientAuthStore } from "@/stores/client-auth-store";
+import { ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+
+const registerSchema = z
+    .object({
+        name: z.string().min(3, "O nome deve ter no minimo 3 caracteres"),
+        email: z.string().email("Informe um email valido"),
+        password: z
+            .string()
+            .min(6, "A senha deve ter no minimo 6 caracteres"),
+        password_confirmation: z.string(),
+    })
+    .refine((data) => data.password === data.password_confirmation, {
+        message: "As senhas nao conferem",
+        path: ["password_confirmation"],
+    });
+
+type RegisterForm = z.infer<typeof registerSchema>;
+
+export default function ClientRegisterPage() {
+    const router = useRouter();
+    const { register: registerClient, isLoading } = useClientAuthStore();
+    const [error, setError] = useState<string | null>(null);
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<RegisterForm>({
+        resolver: zodResolver(registerSchema),
+    });
+
+    const onSubmit = async (data: RegisterForm) => {
+        setError(null);
+        try {
+            await registerClient(data.name, data.email, data.password);
+            router.push("/client/pedidos");
+        } catch (err) {
+            if (err instanceof ApiError) {
+                if (
+                    err.data &&
+                    typeof err.data === "object" &&
+                    "errors" in err.data
+                ) {
+                    const validationErrors = err.data as {
+                        errors: Record<string, string[]>;
+                    };
+                    const firstError =
+                        Object.values(validationErrors.errors)[0];
+                    setError(firstError?.[0] || err.message);
+                } else {
+                    setError(err.message);
+                }
+            } else {
+                setError("Erro ao conectar com o servidor.");
+            }
+        }
+    };
+
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <CardTitle className="text-2xl font-bold">
+                        Orderly
+                    </CardTitle>
+                    <CardDescription>
+                        Crie sua conta de cliente
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form
+                        onSubmit={handleSubmit(onSubmit)}
+                        className="space-y-4"
+                    >
+                        {error && (
+                            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Nome</Label>
+                            <Input
+                                id="name"
+                                type="text"
+                                placeholder="Seu nome completo"
+                                {...register("name")}
+                            />
+                            {errors.name && (
+                                <p className="text-sm text-destructive">
+                                    {errors.name.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="seu@email.com"
+                                {...register("email")}
+                            />
+                            {errors.email && (
+                                <p className="text-sm text-destructive">
+                                    {errors.email.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Senha</Label>
+                            <Input
+                                id="password"
+                                type="password"
+                                placeholder="••••••••"
+                                {...register("password")}
+                            />
+                            {errors.password && (
+                                <p className="text-sm text-destructive">
+                                    {errors.password.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="password_confirmation">
+                                Confirmar Senha
+                            </Label>
+                            <Input
+                                id="password_confirmation"
+                                type="password"
+                                placeholder="••••••••"
+                                {...register("password_confirmation")}
+                            />
+                            {errors.password_confirmation && (
+                                <p className="text-sm text-destructive">
+                                    {errors.password_confirmation.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Cadastrando..." : "Cadastrar"}
+                        </Button>
+                    </form>
+                </CardContent>
+                <CardFooter className="justify-center">
+                    <p className="text-sm text-muted-foreground">
+                        Ja tem conta?{" "}
+                        <Link
+                            href="/client/login"
+                            className="text-primary underline-offset-4 hover:underline"
+                        >
+                            Entrar
+                        </Link>
+                    </p>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+}
+```
+
+### Middleware — proteger rotas do cliente
+
+Atualize `frontend/src/middleware.ts` para suportar as rotas de cliente com cookie separado:
+
+```ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+    const { pathname } = request.nextUrl;
+
+    // --- Rotas de cliente ---
+    const isClientLoginPage = pathname === "/client/login";
+    const isClientRegisterPage = pathname === "/client/register";
+    const isClientProtectedRoute =
+        pathname.startsWith("/client/") &&
+        !isClientLoginPage &&
+        !isClientRegisterPage;
+
+    if (
+        isClientProtectedRoute ||
+        isClientLoginPage ||
+        isClientRegisterPage
+    ) {
+        const clientToken = request.cookies.get("client_token")?.value;
+
+        if (isClientProtectedRoute && !clientToken) {
+            return NextResponse.redirect(
+                new URL("/client/login", request.url),
+            );
+        }
+
+        if ((isClientLoginPage || isClientRegisterPage) && clientToken) {
+            return NextResponse.redirect(
+                new URL("/client/pedidos", request.url),
+            );
+        }
+
+        return NextResponse.next();
+    }
+
+    // --- Rotas de admin (sem alteracoes) ---
+    const token = request.cookies.get("token")?.value;
+
+    const isLoginPage = pathname === "/login";
+    const isProtectedRoute =
+        pathname.startsWith("/dashboard") ||
+        pathname.startsWith("/plans") ||
+        pathname.startsWith("/profiles") ||
+        pathname.startsWith("/roles") ||
+        pathname.startsWith("/orders") ||
+        pathname.startsWith("/products") ||
+        pathname.startsWith("/customers") ||
+        pathname.startsWith("/tables") ||
+        pathname.startsWith("/reviews") ||
+        pathname.startsWith("/settings");
+
+    if (isProtectedRoute && !token) {
+        return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    if (isLoginPage && token) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    return NextResponse.next();
+}
+
+export const config = {
+    matcher: [
+        "/dashboard/:path*",
+        "/plans/:path*",
+        "/profiles/:path*",
+        "/roles/:path*",
+        "/orders/:path*",
+        "/products/:path*",
+        "/customers/:path*",
+        "/tables/:path*",
+        "/reviews/:path*",
+        "/settings/:path*",
+        "/login",
+        "/client/:path*",
+    ],
+};
+```
+
+> **Importante:** O middleware usa `client_token` (cookie separado do `token` do admin). Isso permite que um usuario esteja logado como admin e como cliente simultaneamente em abas diferentes.
+
+### Pagina de pedidos do cliente (placeholder)
+
+Crie `frontend/src/app/client/pedidos/page.tsx`:
+
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useClientAuthStore } from "@/stores/client-auth-store";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { LogOut, User } from "lucide-react";
+
+export default function ClientPedidosPage() {
+    const router = useRouter();
+    const { client, logout } = useClientAuthStore();
+
+    const handleLogout = async () => {
+        await logout();
+        router.push("/client/login");
+    };
+
+    return (
+        <div className="min-h-screen bg-muted/50">
+            <header className="border-b bg-background">
+                <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+                    <h1 className="text-lg font-bold">Orderly</h1>
+                    <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <User className="h-4 w-4" />
+                            {client?.name}
+                        </span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleLogout}
+                        >
+                            <LogOut className="mr-1.5 h-4 w-4" />
+                            Sair
+                        </Button>
+                    </div>
+                </div>
+            </header>
+
+            <main className="mx-auto max-w-4xl px-4 py-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Meus Pedidos</CardTitle>
+                        <CardDescription>
+                            Acompanhe seus pedidos e avalie apos a entrega.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            Nenhum pedido encontrado. Em breve voce podera
+                            acompanhar seus pedidos por aqui.
+                        </p>
+                    </CardContent>
+                </Card>
+            </main>
+        </div>
+    );
+}
+```
+
+> **Nota:** Esta e uma pagina placeholder. A listagem real de pedidos do cliente sera implementada em uma fase futura, integrando com a API `GET /client/orders`.
+
+---
+
+## Passo 8.12 - Verificacao end-to-end da Fase 8
 
 ### Checklist de verificacao
 
@@ -21109,13 +21796,23 @@ A sidebar ja tem o link "Avaliacoes" no grupo **Operacao** (configurado no Passo
 - [ ] `EvaluationRepository::paginateByTenant()` filtra via `whereHas('order', ...)`
 - [ ] Seeder cria clientes e avaliacao de exemplo
 
-**Frontend:**
+**Frontend — Avaliacoes (admin):**
 
 - [ ] Tipos `Evaluation` em `evaluation.ts`
 - [ ] Servico `evaluation-service.ts` com listagem e exclusao
 - [ ] Pagina `/reviews` lista avaliacoes com estrelas visuais
 - [ ] `TenantRequiredAlert` aparece para super-admin
 - [ ] Swagger mostra tags "Auth Cliente" e "Avaliacoes"
+
+**Frontend — Area do Cliente:**
+
+- [ ] Store `client-auth-store.ts` com login, register, logout (cookie `client_token`)
+- [ ] Pagina `/client/login` funciona com guard `client`
+- [ ] Pagina `/client/register` cria conta e redireciona para `/client/pedidos`
+- [ ] Link entre login e register funciona
+- [ ] Middleware redireciona rotas `/client/*` protegidas para `/client/login`
+- [ ] Middleware redireciona `/client/login` para `/client/pedidos` se ja autenticado
+- [ ] Cookies `token` (admin) e `client_token` (cliente) sao independentes
 
 ### Fluxo completo de teste
 
@@ -21126,6 +21823,8 @@ A sidebar ja tem o link "Avaliacoes" no grupo **Operacao** (configurado no Passo
 5. **Tentar avaliar novamente** → erro 422 "Voce ja avaliou este pedido."
 6. **Listar avaliacoes como admin:** `GET /evaluations` com token de admin
 7. **No frontend**, acessar `/reviews` e verificar a tabela com estrelas
+8. **No frontend**, acessar `/client/login` e logar com `joao@email.com` / `password`
+9. **No frontend**, acessar `/client/register` e criar nova conta de cliente
 
 ### Resumo dos arquivos da Fase 8
 
@@ -21177,9 +21876,16 @@ backend/
 
 ```
 frontend/src/
+├── stores/client-auth-store.ts
 ├── types/evaluation.ts
 ├── services/evaluation-service.ts
-└── app/(admin)/reviews/page.tsx
+├── middleware.ts (modificado — rotas /client/* + cookie client_token)
+├── app/
+│   ├── (admin)/reviews/page.tsx
+│   └── client/
+│       ├── login/page.tsx
+│       ├── register/page.tsx
+│       └── pedidos/page.tsx
 ```
 
 **Conceitos aprendidos:**
@@ -21191,6 +21897,8 @@ frontend/src/
 - **Validacao de negocio na Action** — status do pedido, propriedade do cliente, unicidade — regras que dependem de estado do banco
 - **Unique composite constraint** — `[order_id, client_id]` impede avaliacoes duplicadas a nivel de banco
 - **Componente `StarRating`** — renderizacao condicional de icones SVG com classes Tailwind
+- **Stores separados (Zustand)** — `auth-storage` para admin e `client-auth-storage` para cliente, evitando conflito de tokens
+- **Cookies separados no middleware** — `token` (admin) e `client_token` (cliente) permitem sessoes independentes no Next.js middleware (server-side)
 
 **Proximo:** Fase 9 - Dashboard com Metricas
 

@@ -2,8 +2,30 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
+
+  // --- Rotas de cliente ---
+  const isClientLoginPage = pathname === "/client/login";
+  const isClientRegisterPage = pathname === "/client/register";
+  const isClientProtectedRoute =
+    pathname.startsWith("/client/") && !isClientLoginPage && !isClientRegisterPage;
+
+  if (isClientProtectedRoute || isClientLoginPage || isClientRegisterPage) {
+    const clientToken = request.cookies.get("client_token")?.value;
+
+    if (isClientProtectedRoute && !clientToken) {
+      return NextResponse.redirect(new URL("/client/login", request.url));
+    }
+
+    if ((isClientLoginPage || isClientRegisterPage) && clientToken) {
+      return NextResponse.redirect(new URL("/client/pedidos", request.url));
+    }
+
+    return NextResponse.next();
+  }
+
+  // --- Rotas de admin ---
+  const token = request.cookies.get("token")?.value;
 
   const isLoginPage = pathname === "/login";
   const isProtectedRoute = pathname.startsWith("/dashboard") ||
@@ -43,5 +65,6 @@ export const config = {
     "/reviews/:path*",
     "/settings/:path*",
     "/login",
+    "/client/:path*",
   ],
 };
