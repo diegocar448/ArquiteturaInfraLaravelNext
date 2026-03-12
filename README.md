@@ -22797,6 +22797,21 @@ function authHeaders(\App\Models\User $user): array
 
 > **Por que `email` de super-admin?** O `createAdminUser()` usa o email `admin@orderly.com` que esta na config `orderly.super_admin_emails`. Isso faz o `isSuperAdmin()` retornar `true`, bypassing todas as verificacoes de permissao (ACL). Sem isso, o usuario de teste receberia 403 Forbidden em todos os endpoints protegidos por `CheckPermission`.
 
+### Importante: `force="true"` no phpunit.xml
+
+O `docker-compose.yml` define `DB_CONNECTION=pgsql` como variavel de ambiente, que **sobrescreve** o `.env` e o `phpunit.xml`. Sem `force="true"`, os testes usariam o banco PostgreSQL de desenvolvimento e o `RefreshDatabase` **apagaria todos os seus dados**!
+
+Abra `backend/phpunit.xml` e garanta que as linhas de DB tenham `force="true"`:
+
+```xml
+<env name="DB_CONNECTION" value="sqlite" force="true"/>
+<env name="DB_DATABASE" value=":memory:" force="true"/>
+```
+
+O `force="true"` diz ao PHPUnit: "ignore qualquer variavel de ambiente existente e use este valor". Assim os testes sempre usam SQLite em memoria, que e rapido e descartavel.
+
+> **Se voce ja rodou testes sem o `force="true"`**, seus dados de desenvolvimento foram apagados. Restaure com: `docker compose exec backend php artisan db:seed`
+
 ### Factories necessarias
 
 Verifique que as factories existem. As mais importantes:
