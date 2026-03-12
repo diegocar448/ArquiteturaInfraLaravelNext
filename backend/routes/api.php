@@ -14,7 +14,7 @@ use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ClientEvaluationController;
 use App\Http\Controllers\Api\V1\EvaluationController;
-
+use App\Http\Controllers\Api\V1\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -163,5 +163,9 @@ Route::prefix('v1')->group(function () {
             Route::delete('evaluations/{evaluation}', [EvaluationController::class, 'destroy'])
                 ->middleware('permission:orders.delete');
         });
+
+
+        // Dashboard Metrics
+        Route::get('dashboard/metrics', [DashboardController::class, 'metrics']);
     });
 });
