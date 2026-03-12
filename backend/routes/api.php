@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AclSyncController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Auth\ClientAuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\DetailPlanController;
 use App\Http\Controllers\Api\V1\PlanController;
@@ -11,9 +12,24 @@ use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\TableController;
 use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\OrderController;
+
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+
+
+    // --- Rotas publicas de clientes ---
+    Route::prefix('client/auth')->group(function () {
+        Route::post('/register', [ClientAuthController::class, 'register']);
+        Route::post('/login', [ClientAuthController::class, 'login']);
+    });
+
+    // --- Rotas protegidas de clientes (requer JWT guard "client") ---
+    Route::middleware('auth:client')->prefix('client')->group(function () {
+        Route::get('/auth/me', [ClientAuthController::class, 'me']);
+        Route::post('/auth/logout', [ClientAuthController::class, 'logout']);
+    });
+
     // Rotas publicas
     Route::post('/auth/login', [AuthController::class, 'login']);
 
