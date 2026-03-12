@@ -20183,10 +20183,11 @@ Saida esperada:
 
 ```
 Running migrations.
-0001_01_02_000012_create_clients_table ................ DONE
 0001_01_02_000013_add_client_fk_to_orders_table ....... DONE
 0001_01_02_000014_create_order_evaluations_table ...... DONE
 ```
+
+> **Nota:** A migration `0001_01_02_000012_create_clients_table` ja foi executada no Passo 8.2.
 
 ---
 
