@@ -14,8 +14,9 @@ class TenantSeeder extends Seeder
     {
         $plan = Plan::where('name', 'Profissional')->first();
 
-        if (!$plan) {
+        if (! $plan) {
             $this->command->warn('Plano "Profissional" nao encontrado. Rode PlanSeeder primeiro.');
+
             return;
         }
 

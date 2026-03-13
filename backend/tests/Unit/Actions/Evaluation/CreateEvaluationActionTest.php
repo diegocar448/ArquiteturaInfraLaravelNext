@@ -2,7 +2,6 @@
 
 use App\Actions\Evaluation\CreateEvaluationAction;
 use App\DTOs\Evaluation\CreateEvaluationDTO;
-use App\Models\Order;
 use App\Repositories\Contracts\EvaluationRepositoryInterface;
 
 describe('CreateEvaluationAction', function () {

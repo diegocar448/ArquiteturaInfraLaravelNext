@@ -24,14 +24,14 @@ trait HasPermission
             })
             ->exists();
 
-        if (!$hasRolePermission) {
+        if (! $hasRolePermission) {
             return false;
         }
 
         // Verificar se o plano do tenant inclui essa permissao em algum profile
         $tenant = $this->tenant;
 
-        if (!$tenant || !$tenant->plan) {
+        if (! $tenant || ! $tenant->plan) {
             return false;
         }
 
@@ -48,7 +48,7 @@ trait HasPermission
     public function hasAllPermissions(array $permissions): bool
     {
         foreach ($permissions as $permission) {
-            if (!$this->hasPermission($permission)) {
+            if (! $this->hasPermission($permission)) {
                 return false;
             }
         }
@@ -91,7 +91,7 @@ trait HasPermission
         // Permissoes do plano via profiles
         $tenant = $this->tenant;
 
-        if (!$tenant || !$tenant->plan) {
+        if (! $tenant || ! $tenant->plan) {
             return [];
         }
 

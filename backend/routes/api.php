@@ -4,21 +4,20 @@ use App\Http\Controllers\Api\V1\AclSyncController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\ClientAuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\ClientEvaluationController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DetailPlanController;
+use App\Http\Controllers\Api\V1\EvaluationController;
+use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\TableController;
 use App\Http\Controllers\Api\V1\TenantController;
-use App\Http\Controllers\Api\V1\OrderController;
-use App\Http\Controllers\Api\V1\ClientEvaluationController;
-use App\Http\Controllers\Api\V1\EvaluationController;
-use App\Http\Controllers\Api\V1\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-
 
     // --- Rotas publicas de clientes ---
     Route::prefix('client/auth')->group(function () {
@@ -32,7 +31,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', [ClientAuthController::class, 'logout']);
 
         // Avaliacoes (cliente cria)
-        Route::post('/evaluations', [ClientEvaluationController::class, 'store']);        
+        Route::post('/evaluations', [ClientEvaluationController::class, 'store']);
     });
 
     // Rotas publicas
@@ -105,7 +104,6 @@ Route::prefix('v1')->group(function () {
         Route::post('users/{user}/roles', [AclSyncController::class, 'syncUserRoles'])
             ->middleware('permission:users.edit');
 
-
         // --- Rotas tenant-scoped (requer usuario vinculado a tenant) ---
         Route::middleware('tenant:required')->group(function () {
             // Categories CRUD
@@ -146,7 +144,6 @@ Route::prefix('v1')->group(function () {
             Route::get('tables/{table}/qrcode', [TableController::class, 'qrcode'])
                 ->middleware('permission:tables.view');
 
-            
             // Orders CRUD
             Route::apiResource('orders', OrderController::class)
                 ->middleware([
@@ -163,7 +160,6 @@ Route::prefix('v1')->group(function () {
             Route::delete('evaluations/{evaluation}', [EvaluationController::class, 'destroy'])
                 ->middleware('permission:orders.delete');
         });
-
 
         // Dashboard Metrics
         Route::get('dashboard/metrics', [DashboardController::class, 'metrics']);

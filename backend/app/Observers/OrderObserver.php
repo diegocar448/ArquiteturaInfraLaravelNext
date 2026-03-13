@@ -27,6 +27,6 @@ class OrderObserver
 
         $nextNumber = $lastOrder ? ((int) Str::after($lastOrder->identify, 'ORD-')) + 1 : 1;
 
-        return 'ORD-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        return 'ORD-'.str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
     }
 }

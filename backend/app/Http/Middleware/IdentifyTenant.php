@@ -18,14 +18,14 @@ class IdentifyTenant
         if ($user && $user->tenant_id) {
             $tenant = $user->tenant;
 
-            if (!$tenant || !$tenant->active) {
+            if (! $tenant || ! $tenant->active) {
                 return response()->json([
                     'message' => 'Tenant inativo ou nao encontrado.',
                 ], 403);
             }
 
             app()->instance('currentTenant', $tenant);
-        } elseif ($mode === 'required' && !$user?->isSuperAdmin()) {
+        } elseif ($mode === 'required' && ! $user?->isSuperAdmin()) {
             return response()->json([
                 'message' => 'Esta acao requer um usuario vinculado a um tenant.',
             ], 403);

@@ -36,7 +36,7 @@ final class TenantRepository implements TenantRepositoryInterface
     {
         $tenant = $this->model->find($id);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return null;
         }
 
@@ -49,7 +49,7 @@ final class TenantRepository implements TenantRepositoryInterface
     {
         $tenant = $this->model->find($id);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return false;
         }
 

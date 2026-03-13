@@ -14,8 +14,9 @@ class RoleSeeder extends Seeder
     {
         $tenant = Tenant::where('name', 'Restaurante Demo')->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             $this->command->warn('Tenant "Restaurante Demo" nao encontrado. Rode TenantSeeder primeiro.');
+
             return;
         }
 

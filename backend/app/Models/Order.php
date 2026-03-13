@@ -14,13 +14,18 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[ObservedBy(OrderObserver::class)]
 class Order extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     const STATUS_OPEN = 'open';
+
     const STATUS_ACCEPTED = 'accepted';
+
     const STATUS_REJECTED = 'rejected';
+
     const STATUS_PREPARING = 'preparing';
+
     const STATUS_DONE = 'done';
+
     const STATUS_DELIVERED = 'delivered';
 
     const VALID_TRANSITIONS = [

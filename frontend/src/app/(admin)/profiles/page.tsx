@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Pencil, Trash2, Shield } from "lucide-react";
+import { Trash2, Shield } from "lucide-react";
 import Link from "next/link";
 
 export default function ProfilesPage() {

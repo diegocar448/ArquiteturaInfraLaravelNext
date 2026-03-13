@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Role\CreateRoleAction;
+use App\Actions\Role\DeleteRoleAction;
+use App\Actions\Role\ListRolesAction;
+use App\Actions\Role\ShowRoleAction;
+use App\Actions\Role\UpdateRoleAction;
+use App\DTOs\Role\CreateRoleDTO;
+use App\DTOs\Role\UpdateRoleDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\UpdateRoleRequest;
 use App\Http\Resources\RoleResource;
-use App\DTOs\Role\CreateRoleDTO;
-use App\DTOs\Role\UpdateRoleDTO;
-use App\Actions\Role\ListRolesAction;
-use App\Actions\Role\ShowRoleAction;
-use App\Actions\Role\CreateRoleAction;
-use App\Actions\Role\UpdateRoleAction;
-use App\Actions\Role\DeleteRoleAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -58,7 +58,7 @@ class RoleController extends Controller
     {
         $role = $action->execute($role);
 
-        if (!$role) {
+        if (! $role) {
             return response()->json(['message' => 'Papel nao encontrado.'], 404);
         }
 
@@ -78,7 +78,7 @@ class RoleController extends Controller
     {
         $updated = $action->execute($role, UpdateRoleDTO::fromRequest($request));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Papel nao encontrado.'], 404);
         }
 
@@ -96,7 +96,7 @@ class RoleController extends Controller
     {
         $deleted = $action->execute($role);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Papel nao encontrado.'], 404);
         }
 

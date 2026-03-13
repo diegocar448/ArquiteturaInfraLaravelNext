@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   ShoppingBag,
   Users,
-  UtensilsCrossed,
   QrCode,
   Star,
   Settings,

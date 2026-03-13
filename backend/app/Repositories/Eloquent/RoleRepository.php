@@ -31,7 +31,7 @@ final class RoleRepository implements RoleRepositoryInterface
     {
         $role = $this->findById($id);
 
-        if (!$role) {
+        if (! $role) {
             return null;
         }
 
@@ -44,7 +44,7 @@ final class RoleRepository implements RoleRepositoryInterface
     {
         $role = $this->findById($id);
 
-        if (!$role) {
+        if (! $role) {
             return false;
         }
 

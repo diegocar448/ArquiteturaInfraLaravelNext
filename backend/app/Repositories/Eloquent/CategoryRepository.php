@@ -36,7 +36,7 @@ final class CategoryRepository implements CategoryRepositoryInterface
     {
         $category = $this->findById($id);
 
-        if (!$category) {
+        if (! $category) {
             return null;
         }
 
@@ -49,7 +49,7 @@ final class CategoryRepository implements CategoryRepositoryInterface
     {
         $category = $this->findById($id);
 
-        if (!$category) {
+        if (! $category) {
             return false;
         }
 

@@ -22,7 +22,7 @@ final class GenerateQrCodeAction
     {
         $table = $this->repository->findById($id);
 
-        if (!$table) {
+        if (! $table) {
             return null;
         }
 

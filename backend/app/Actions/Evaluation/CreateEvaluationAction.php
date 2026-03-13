@@ -20,7 +20,7 @@ final class CreateEvaluationAction
     {
         $order = Order::withoutGlobalScopes()->find($dto->orderId);
 
-        if (!$order) {
+        if (! $order) {
             return 'Pedido nao encontrado.';
         }
 

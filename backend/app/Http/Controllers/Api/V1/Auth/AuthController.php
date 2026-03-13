@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Actions\Auth\LoginAction;
+use App\DTOs\Auth\LoginDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
-use App\DTOs\Auth\LoginDTO;
-use App\Actions\Auth\LoginAction;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 

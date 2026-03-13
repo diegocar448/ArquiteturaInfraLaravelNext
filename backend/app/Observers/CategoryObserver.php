@@ -20,7 +20,7 @@ class CategoryObserver
 
     public function updating(Category $category): void
     {
-        if ($category->isDirty('name') && !$category->isDirty('url')) {
+        if ($category->isDirty('name') && ! $category->isDirty('url')) {
             $category->url = Str::slug($category->name);
         }
     }

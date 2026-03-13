@@ -14,7 +14,7 @@ final class LoginAction
             'password' => $dto->password,
         ]);
 
-        if (!$token) {
+        if (! $token) {
             throw new AuthenticationException('Credenciais invalidas.');
         }
 

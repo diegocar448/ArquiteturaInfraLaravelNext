@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { getOrder } from "@/services/order-service";
 import type { Order } from "@/types/order";
 import {
@@ -21,7 +21,6 @@ import Link from "next/link";
 
 export default function OrderDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -39,6 +38,7 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     fetchOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
   const handleStatusUpdated = () => {

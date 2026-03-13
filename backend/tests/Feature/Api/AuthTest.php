@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\User;
-
 describe('Auth API', function () {
     it('can login with valid credentials', function () {
         $user = createAdminUser();

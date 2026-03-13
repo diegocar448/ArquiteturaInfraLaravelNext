@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Tenant\CreateTenantAction;
+use App\Actions\Tenant\DeleteTenantAction;
+use App\Actions\Tenant\ListTenantsAction;
+use App\Actions\Tenant\ShowTenantAction;
+use App\Actions\Tenant\UpdateTenantAction;
+use App\DTOs\Tenant\CreateTenantDTO;
+use App\DTOs\Tenant\UpdateTenantDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreTenantRequest;
 use App\Http\Requests\Tenant\UpdateTenantRequest;
 use App\Http\Resources\TenantResource;
-use App\DTOs\Tenant\CreateTenantDTO;
-use App\DTOs\Tenant\UpdateTenantDTO;
-use App\Actions\Tenant\ListTenantsAction;
-use App\Actions\Tenant\ShowTenantAction;
-use App\Actions\Tenant\CreateTenantAction;
-use App\Actions\Tenant\UpdateTenantAction;
-use App\Actions\Tenant\DeleteTenantAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -60,7 +60,7 @@ class TenantController extends Controller
     {
         $tenant = $action->execute($tenant);
 
-        if (!$tenant) {
+        if (! $tenant) {
             return response()->json(['message' => 'Tenant nao encontrado.'], 404);
         }
 
@@ -78,7 +78,7 @@ class TenantController extends Controller
     {
         $updated = $action->execute($tenant, UpdateTenantDTO::fromRequest($request));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Tenant nao encontrado.'], 404);
         }
 
@@ -96,7 +96,7 @@ class TenantController extends Controller
     {
         $deleted = $action->execute($tenant);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Tenant nao encontrado.'], 404);
         }
 

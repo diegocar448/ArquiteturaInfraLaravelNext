@@ -36,7 +36,7 @@ final class TableRepository implements TableRepositoryInterface
     {
         $table = $this->findById($id);
 
-        if (!$table) {
+        if (! $table) {
             return null;
         }
 
@@ -49,7 +49,7 @@ final class TableRepository implements TableRepositoryInterface
     {
         $table = $this->findById($id);
 
-        if (!$table) {
+        if (! $table) {
             return false;
         }
 

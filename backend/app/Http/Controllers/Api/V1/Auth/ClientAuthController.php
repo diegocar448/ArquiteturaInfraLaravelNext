@@ -41,7 +41,7 @@ class ClientAuthController extends Controller
     {
         $token = auth('client')->attempt($request->validated());
 
-        if (!$token) {
+        if (! $token) {
             return response()->json([
                 'message' => 'Credenciais invalidas.',
             ], 401);

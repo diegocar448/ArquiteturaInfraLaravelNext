@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Category\CreateCategoryAction;
+use App\Actions\Category\DeleteCategoryAction;
+use App\Actions\Category\ListCategoriesAction;
+use App\Actions\Category\ShowCategoryAction;
+use App\Actions\Category\UpdateCategoryAction;
+use App\DTOs\Category\CreateCategoryDTO;
+use App\DTOs\Category\UpdateCategoryDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Category\StoreCategoryRequest;
 use App\Http\Requests\Category\UpdateCategoryRequest;
 use App\Http\Resources\CategoryResource;
-use App\DTOs\Category\CreateCategoryDTO;
-use App\DTOs\Category\UpdateCategoryDTO;
-use App\Actions\Category\ListCategoriesAction;
-use App\Actions\Category\ShowCategoryAction;
-use App\Actions\Category\CreateCategoryAction;
-use App\Actions\Category\UpdateCategoryAction;
-use App\Actions\Category\DeleteCategoryAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -58,7 +58,7 @@ class CategoryController extends Controller
     {
         $category = $action->execute($category);
 
-        if (!$category) {
+        if (! $category) {
             return response()->json(['message' => 'Categoria nao encontrada.'], 404);
         }
 
@@ -76,7 +76,7 @@ class CategoryController extends Controller
     {
         $updated = $action->execute($category, UpdateCategoryDTO::fromRequest($request));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Categoria nao encontrada.'], 404);
         }
 
@@ -94,7 +94,7 @@ class CategoryController extends Controller
     {
         $deleted = $action->execute($category);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Categoria nao encontrada.'], 404);
         }
 

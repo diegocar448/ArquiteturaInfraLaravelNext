@@ -12,13 +12,13 @@ trait BelongsToTenant
     protected static function bootBelongsToTenant(): void
     {
         // Filtro automatico em todas as queries
-        static::addGlobalScope(new TenantScope());
+        static::addGlobalScope(new TenantScope);
 
         // Auto-preenche tenant_id ao criar registros
         static::creating(function (Model $model) {
             $user = auth('api')->user();
 
-            if ($user && $user->tenant_id && !$model->tenant_id) {
+            if ($user && $user->tenant_id && ! $model->tenant_id) {
                 $model->tenant_id = $user->tenant_id;
             }
         });

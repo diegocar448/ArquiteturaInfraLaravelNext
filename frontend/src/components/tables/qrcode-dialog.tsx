@@ -55,6 +55,7 @@ export function QrCodeDialog({ table, onOpenChange }: QrCodeDialogProps) {
           <Skeleton className="h-64 w-64 mx-auto" />
         ) : data ? (
           <div className="flex flex-col items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={data.qrcode}
               alt={`QR Code para ${table?.identify}`}

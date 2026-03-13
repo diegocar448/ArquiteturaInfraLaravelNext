@@ -36,12 +36,13 @@ final class PlanRepository implements PlanRepositoryInterface
     {
         $plan = $this->findById($id);
 
-        if (!$plan) {
+        if (! $plan) {
             return null;
         }
 
         $plan->update($data);
-        //Apos o update(), o model em memoria pode estar desatualizado (ex: o Observer pode ter modificado o url). O fresh() recarrega do banco.
+
+        // Apos o update(), o model em memoria pode estar desatualizado (ex: o Observer pode ter modificado o url). O fresh() recarrega do banco.
         return $plan->fresh();
     }
 
@@ -49,7 +50,7 @@ final class PlanRepository implements PlanRepositoryInterface
     {
         $plan = $this->findById($id);
 
-        if (!$plan) {
+        if (! $plan) {
             return false;
         }
 

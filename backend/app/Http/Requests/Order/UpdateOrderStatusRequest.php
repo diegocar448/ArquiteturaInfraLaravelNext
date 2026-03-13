@@ -24,7 +24,7 @@ class UpdateOrderStatusRequest extends FormRequest
     {
         return [
             'status.required' => 'O status e obrigatorio.',
-            'status.in' => 'Status invalido. Valores aceitos: ' . implode(', ', Order::ALL_STATUSES),
+            'status.in' => 'Status invalido. Valores aceitos: '.implode(', ', Order::ALL_STATUSES),
         ];
     }
 }

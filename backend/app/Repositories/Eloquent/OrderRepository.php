@@ -42,7 +42,7 @@ final class OrderRepository implements OrderRepositoryInterface
     {
         $order = $this->model->find($id);
 
-        if (!$order) {
+        if (! $order) {
             return null;
         }
 
@@ -55,7 +55,7 @@ final class OrderRepository implements OrderRepositoryInterface
     {
         $order = $this->model->find($id);
 
-        if (!$order) {
+        if (! $order) {
             return false;
         }
 

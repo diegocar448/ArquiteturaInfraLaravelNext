@@ -36,7 +36,7 @@ final class ProductRepository implements ProductRepositoryInterface
     {
         $product = $this->findById($id);
 
-        if (!$product) {
+        if (! $product) {
             return null;
         }
 
@@ -49,7 +49,7 @@ final class ProductRepository implements ProductRepositoryInterface
     {
         $product = $this->findById($id);
 
-        if (!$product) {
+        if (! $product) {
             return false;
         }
 

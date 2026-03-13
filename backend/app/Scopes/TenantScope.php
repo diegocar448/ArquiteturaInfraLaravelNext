@@ -14,7 +14,7 @@ class TenantScope implements Scope
 
         // Super-admin (sem tenant) ve tudo — nao aplica filtro
         if ($user && $user->tenant_id) {
-            $builder->where($model->getTable() . '.tenant_id', $user->tenant_id);
+            $builder->where($model->getTable().'.tenant_id', $user->tenant_id);
         }
     }
 }

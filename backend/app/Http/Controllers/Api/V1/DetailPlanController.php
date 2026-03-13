@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Plan\CreateDetailPlanAction;
+use App\Actions\Plan\DeleteDetailPlanAction;
+use App\Actions\Plan\ListDetailPlansAction;
+use App\Actions\Plan\UpdateDetailPlanAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Plan\StoreDetailPlanRequest;
 use App\Http\Requests\Plan\UpdateDetailPlanRequest;
 use App\Http\Resources\DetailPlanResource;
-use App\Actions\Plan\ListDetailPlansAction;
-use App\Actions\Plan\CreateDetailPlanAction;
-use App\Actions\Plan\UpdateDetailPlanAction;
-use App\Actions\Plan\DeleteDetailPlanAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -51,7 +51,7 @@ class DetailPlanController extends Controller
     {
         $updated = $action->execute($detail, $request->validated('name'));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Detalhe nao encontrado.'], 404);
         }
 
@@ -69,7 +69,7 @@ class DetailPlanController extends Controller
     {
         $deleted = $action->execute($detail);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Detalhe nao encontrado.'], 404);
         }
 

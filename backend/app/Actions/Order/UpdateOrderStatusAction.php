@@ -19,11 +19,11 @@ final class UpdateOrderStatusAction
     {
         $order = $this->repository->findById($id);
 
-        if (!$order) {
+        if (! $order) {
             return 'Pedido nao encontrado.';
         }
 
-        if (!$order->canTransitionTo($dto->status)) {
+        if (! $order->canTransitionTo($dto->status)) {
             return "Transicao de '{$order->status}' para '{$dto->status}' nao e permitida.";
         }
 

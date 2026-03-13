@@ -20,7 +20,7 @@ class ProductObserver
 
     public function updating(Product $product): void
     {
-        if ($product->isDirty('title') && !$product->isDirty('url')) {
+        if ($product->isDirty('title') && ! $product->isDirty('url')) {
             $product->url = Str::slug($product->title);
         }
     }

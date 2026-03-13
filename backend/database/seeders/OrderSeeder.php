@@ -14,8 +14,9 @@ class OrderSeeder extends Seeder
     {
         $tenant = Tenant::where('name', 'Restaurante Demo')->first();
 
-        if (!$tenant) {
+        if (! $tenant) {
             $this->command->warn('Tenant "Restaurante Demo" nao encontrado. Rode TenantSeeder primeiro.');
+
             return;
         }
 
@@ -27,8 +28,9 @@ class OrderSeeder extends Seeder
         $coca = Product::where('tenant_id', $tenant->id)->where('title', 'Coca-Cola 350ml')->first();
         $suco = Product::where('tenant_id', $tenant->id)->where('title', 'Suco Natural Laranja')->first();
 
-        if (!$margherita || !$xbacon || !$coca) {
+        if (! $margherita || ! $xbacon || ! $coca) {
             $this->command->warn('Produtos nao encontrados. Rode ProductSeeder primeiro.');
+
             return;
         }
 

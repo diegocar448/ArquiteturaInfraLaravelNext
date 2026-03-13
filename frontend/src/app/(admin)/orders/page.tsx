@@ -50,6 +50,7 @@ export default function OrdersPage() {
   useEffect(() => {
     setLoading(true);
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
   const handleStatusUpdated = () => {

@@ -129,7 +129,7 @@ test-backend: ## Roda testes do backend (Pest)
 	docker compose exec backend php artisan test
 
 test-frontend: ## Roda testes do frontend (Vitest)
-	docker compose exec frontend npm test
+	docker compose exec frontend npx vitest run
 
 test-e2e: ## Roda testes E2E (Playwright)
 	docker compose exec frontend npm run test:e2e
@@ -156,3 +156,17 @@ prod-build: ## Build de producao
 
 prod-up: ## Sobe ambiente de producao
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+
+# ==========================================
+# CI/CD (local simulation)
+# ==========================================
+ci: lint test ## Simula o pipeline CI localmente
+	@echo "$(GREEN)>>> CI passed!$(NC)"
+
+ci-e2e: ## Roda testes E2E como no CI
+	docker compose --profile e2e run --rm playwright npx playwright test
+
+ci-build: ## Simula build de producao das imagens
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+	@echo "$(GREEN)>>> Build de producao OK$(NC)"

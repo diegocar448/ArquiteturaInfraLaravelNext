@@ -31,7 +31,7 @@ final class ProfileRepository implements ProfileRepositoryInterface
     {
         $profile = $this->findById($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return null;
         }
 
@@ -44,7 +44,7 @@ final class ProfileRepository implements ProfileRepositoryInterface
     {
         $profile = $this->findById($id);
 
-        if (!$profile) {
+        if (! $profile) {
             return false;
         }
 

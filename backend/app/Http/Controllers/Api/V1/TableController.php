@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Table\CreateTableAction;
+use App\Actions\Table\DeleteTableAction;
+use App\Actions\Table\GenerateQrCodeAction;
+use App\Actions\Table\ListTablesAction;
+use App\Actions\Table\ShowTableAction;
+use App\Actions\Table\UpdateTableAction;
+use App\DTOs\Table\CreateTableDTO;
+use App\DTOs\Table\UpdateTableDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Table\StoreTableRequest;
 use App\Http\Requests\Table\UpdateTableRequest;
 use App\Http\Resources\TableResource;
-use App\DTOs\Table\CreateTableDTO;
-use App\DTOs\Table\UpdateTableDTO;
-use App\Actions\Table\ListTablesAction;
-use App\Actions\Table\ShowTableAction;
-use App\Actions\Table\CreateTableAction;
-use App\Actions\Table\UpdateTableAction;
-use App\Actions\Table\DeleteTableAction;
-use App\Actions\Table\GenerateQrCodeAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -60,7 +60,7 @@ class TableController extends Controller
     {
         $table = $action->execute($table);
 
-        if (!$table) {
+        if (! $table) {
             return response()->json(['message' => 'Mesa nao encontrada.'], 404);
         }
 
@@ -78,7 +78,7 @@ class TableController extends Controller
     {
         $updated = $action->execute($table, UpdateTableDTO::fromRequest($request));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Mesa nao encontrada.'], 404);
         }
 
@@ -96,7 +96,7 @@ class TableController extends Controller
     {
         $deleted = $action->execute($table);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Mesa nao encontrada.'], 404);
         }
 
@@ -116,7 +116,7 @@ class TableController extends Controller
     {
         $result = $action->execute($table);
 
-        if (!$result) {
+        if (! $result) {
             return response()->json(['message' => 'Mesa nao encontrada.'], 404);
         }
 

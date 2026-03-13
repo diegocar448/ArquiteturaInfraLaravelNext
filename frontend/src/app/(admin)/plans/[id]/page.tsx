@@ -44,6 +44,7 @@ export default function PlanDetailsPage() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planId]);
 
   const handleAddDetail = async () => {

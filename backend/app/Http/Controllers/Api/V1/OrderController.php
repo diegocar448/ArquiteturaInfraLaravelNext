@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Order\CreateOrderAction;
+use App\Actions\Order\DeleteOrderAction;
+use App\Actions\Order\ListOrdersAction;
+use App\Actions\Order\ShowOrderAction;
+use App\Actions\Order\UpdateOrderStatusAction;
+use App\DTOs\Order\CreateOrderDTO;
+use App\DTOs\Order\UpdateOrderStatusDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Order\ListOrdersRequest;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderStatusRequest;
 use App\Http\Resources\OrderResource;
-use App\DTOs\Order\CreateOrderDTO;
-use App\DTOs\Order\UpdateOrderStatusDTO;
-use App\Actions\Order\ListOrdersAction;
-use App\Actions\Order\ShowOrderAction;
-use App\Actions\Order\CreateOrderAction;
-use App\Actions\Order\UpdateOrderStatusAction;
-use App\Actions\Order\DeleteOrderAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -64,7 +64,7 @@ class OrderController extends Controller
     {
         $order = $action->execute($order);
 
-        if (!$order) {
+        if (! $order) {
             return response()->json(['message' => 'Pedido nao encontrado.'], 404);
         }
 
@@ -86,6 +86,7 @@ class OrderController extends Controller
 
         if (is_string($result)) {
             $status = str_contains($result, 'nao encontrado') ? 404 : 422;
+
             return response()->json(['message' => $result], $status);
         }
 
@@ -104,7 +105,7 @@ class OrderController extends Controller
     {
         $deleted = $action->execute($order);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Pedido nao encontrado.'], 404);
         }
 

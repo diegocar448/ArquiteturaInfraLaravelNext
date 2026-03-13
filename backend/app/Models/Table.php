@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 #[ObservedBy(TableObserver::class)]
 class Table extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
     protected $fillable = [
         'tenant_id',

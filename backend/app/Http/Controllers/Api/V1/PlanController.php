@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Plan\CreatePlanAction;
+use App\Actions\Plan\DeletePlanAction;
+use App\Actions\Plan\ListPlansAction;
+use App\Actions\Plan\ShowPlanAction;
+use App\Actions\Plan\UpdatePlanAction;
+use App\DTOs\Plan\CreatePlanDTO;
+use App\DTOs\Plan\UpdatePlanDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Plan\StorePlanRequest;
 use App\Http\Requests\Plan\UpdatePlanRequest;
 use App\Http\Resources\PlanResource;
-use App\DTOs\Plan\CreatePlanDTO;
-use App\DTOs\Plan\UpdatePlanDTO;
-use App\Actions\Plan\ListPlansAction;
-use App\Actions\Plan\ShowPlanAction;
-use App\Actions\Plan\CreatePlanAction;
-use App\Actions\Plan\UpdatePlanAction;
-use App\Actions\Plan\DeletePlanAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -58,7 +58,7 @@ class PlanController extends Controller
     {
         $plan = $action->execute($plan);
 
-        if (!$plan) {
+        if (! $plan) {
             return response()->json(['message' => 'Plano nao encontrado.'], 404);
         }
 
@@ -78,7 +78,7 @@ class PlanController extends Controller
     {
         $updated = $action->execute($plan, UpdatePlanDTO::fromRequest($request));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Plano nao encontrado.'], 404);
         }
 
@@ -96,7 +96,7 @@ class PlanController extends Controller
     {
         $deleted = $action->execute($plan);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Plano nao encontrado.'], 404);
         }
 

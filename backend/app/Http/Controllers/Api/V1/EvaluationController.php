@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Evaluation\DeleteEvaluationAction;
+use App\Actions\Evaluation\ListEvaluationsAction;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\EvaluationResource;
-use App\Actions\Evaluation\ListEvaluationsAction;
-use App\Actions\Evaluation\DeleteEvaluationAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -46,7 +46,7 @@ class EvaluationController extends Controller
     {
         $deleted = $action->execute($evaluation);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Avaliacao nao encontrada.'], 404);
         }
 

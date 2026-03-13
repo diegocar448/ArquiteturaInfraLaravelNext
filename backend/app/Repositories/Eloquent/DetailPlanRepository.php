@@ -31,7 +31,7 @@ final class DetailPlanRepository implements DetailPlanRepositoryInterface
     {
         $detail = $this->findById($id);
 
-        if (!$detail) {
+        if (! $detail) {
             return null;
         }
 
@@ -44,7 +44,7 @@ final class DetailPlanRepository implements DetailPlanRepositoryInterface
     {
         $detail = $this->findById($id);
 
-        if (!$detail) {
+        if (! $detail) {
             return false;
         }
 

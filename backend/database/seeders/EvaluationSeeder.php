@@ -14,16 +14,18 @@ class EvaluationSeeder extends Seeder
         $joao = Client::where('email', 'joao@email.com')->first();
         $maria = Client::where('email', 'maria@email.com')->first();
 
-        if (!$joao || !$maria) {
+        if (! $joao || ! $maria) {
             $this->command->warn('Clientes nao encontrados. Rode ClientSeeder primeiro.');
+
             return;
         }
 
         // Vincular clientes aos pedidos entregues
         $order1 = Order::where('identify', 'ORD-000001')->first(); // delivered
 
-        if (!$order1 || $order1->status !== 'delivered') {
+        if (! $order1 || $order1->status !== 'delivered') {
             $this->command->warn('Pedido ORD-000001 nao encontrado ou nao esta entregue.');
+
             return;
         }
 

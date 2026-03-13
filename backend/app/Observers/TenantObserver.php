@@ -20,7 +20,7 @@ class TenantObserver
 
     public function updating(Tenant $tenant): void
     {
-        if ($tenant->isDirty('name') && !$tenant->isDirty('url')) {
+        if ($tenant->isDirty('name') && ! $tenant->isDirty('url')) {
             $tenant->url = Str::slug($tenant->name);
         }
     }

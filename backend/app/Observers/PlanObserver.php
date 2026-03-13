@@ -16,7 +16,7 @@ class PlanObserver
 
     public function updating(Plan $plan): void
     {
-        if ($plan->isDirty('name') && !$plan->isDirty('url')) {
+        if ($plan->isDirty('name') && ! $plan->isDirty('url')) {
             $plan->url = Str::slug($plan->name);
         }
     }

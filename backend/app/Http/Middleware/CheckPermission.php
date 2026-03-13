@@ -16,11 +16,11 @@ class CheckPermission
     {
         $user = auth('api')->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        if (!$user->hasPermission($permission)) {
+        if (! $user->hasPermission($permission)) {
             return response()->json([
                 'message' => 'Voce nao tem permissao para esta acao.',
                 'required_permission' => $permission,

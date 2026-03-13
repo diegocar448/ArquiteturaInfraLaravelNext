@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Product\CreateProductAction;
+use App\Actions\Product\DeleteProductAction;
+use App\Actions\Product\ListProductsAction;
+use App\Actions\Product\ShowProductAction;
+use App\Actions\Product\UpdateProductAction;
+use App\DTOs\Product\CreateProductDTO;
+use App\DTOs\Product\UpdateProductDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
-use App\DTOs\Product\CreateProductDTO;
-use App\DTOs\Product\UpdateProductDTO;
-use App\Actions\Product\ListProductsAction;
-use App\Actions\Product\ShowProductAction;
-use App\Actions\Product\CreateProductAction;
-use App\Actions\Product\UpdateProductAction;
-use App\Actions\Product\DeleteProductAction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -59,7 +59,7 @@ class ProductController extends Controller
     {
         $product = $action->execute($product);
 
-        if (!$product) {
+        if (! $product) {
             return response()->json(['message' => 'Produto nao encontrado.'], 404);
         }
 
@@ -79,7 +79,7 @@ class ProductController extends Controller
     {
         $updated = $action->execute($product, UpdateProductDTO::fromRequest($request));
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Produto nao encontrado.'], 404);
         }
 
@@ -97,7 +97,7 @@ class ProductController extends Controller
     {
         $deleted = $action->execute($product);
 
-        if (!$deleted) {
+        if (! $deleted) {
             return response()->json(['message' => 'Produto nao encontrado.'], 404);
         }
 
@@ -105,8 +105,6 @@ class ProductController extends Controller
             'message' => 'Produto removido com sucesso.',
         ]);
     }
-
-
 
     /**
      * Sincronizar categorias do produto

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { apiClient, ApiError } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 
 // Sync token com cookie para o middleware (server-side) conseguir ler
 function setTokenCookie(token: string) {

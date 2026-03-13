@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPlans, deletePlan } from "@/services/plan-service";
+import { getPlans } from "@/services/plan-service";
 import type { Plan } from "@/types/plan";
 import {
   Table,
