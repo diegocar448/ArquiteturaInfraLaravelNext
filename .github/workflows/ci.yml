@@ -107,11 +107,11 @@ jobs:
       - name: Generate JWT secret
         run: php artisan jwt:secret --force
 
+      - name: Create cache directory
+        run: mkdir -p bootstrap/cache
+
       - name: Run tests
         run: php artisan test --coverage --min=50
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
 
   # ==========================================
   # FRONTEND TESTS
