@@ -11,7 +11,7 @@ use Tests\TestCase;
 | RefreshDatabase reseta o banco antes de cada teste.
 */
 uses(TestCase::class, RefreshDatabase::class)->in('Feature');
-uses(TestCase::class)->in('Unit');
+uses(TestCase::class, RefreshDatabase::class)->in('Unit');
 
 /*
 |--------------------------------------------------------------------------
