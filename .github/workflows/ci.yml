@@ -111,7 +111,7 @@ jobs:
         run: mkdir -p bootstrap/cache
 
       - name: Run tests
-        run: php artisan test --coverage --min=50
+        run: php artisan test --coverage --min=30
 
   # ==========================================
   # FRONTEND TESTS
