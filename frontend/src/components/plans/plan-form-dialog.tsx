@@ -19,7 +19,7 @@ import { ApiError } from "@/lib/api";
 
 const planSchema = z.object({
   name: z.string().min(1, "O nome e obrigatorio"),
-  price: z.coerce.number().min(0, "O preco nao pode ser negativo"),
+  price: z.number().min(0, "O preco nao pode ser negativo"),
   description: z.string().optional(),
 });
 
@@ -114,7 +114,7 @@ export function PlanFormDialog({
               step="0.01"
               min="0"
               placeholder="0.00"
-              {...register("price")}
+              {...register("price", { valueAsNumber: true })}
             />
             {errors.price && (
               <p className="text-sm text-destructive">{errors.price.message}</p>

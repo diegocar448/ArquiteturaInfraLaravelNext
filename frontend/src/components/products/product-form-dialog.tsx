@@ -20,7 +20,7 @@ import { ApiError } from "@/lib/api";
 
 const productSchema = z.object({
   title: z.string().min(1, "O titulo e obrigatorio"),
-  price: z.coerce.number().min(0, "O preco nao pode ser negativo"),
+  price: z.number().min(0, "O preco nao pode ser negativo"),
   flag: z.enum(["active", "inactive", "featured"]).optional(),
   description: z.string().optional(),
 });
@@ -120,7 +120,7 @@ export function ProductFormDialog({
                 type="number"
                 step="0.01"
                 min="0"
-                {...register("price")}
+                {...register("price", { valueAsNumber: true })}
               />
               {errors.price && (
                 <p className="text-sm text-destructive">

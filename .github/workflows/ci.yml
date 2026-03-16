@@ -37,7 +37,7 @@ jobs:
           restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --ignore-platform-reqs
 
       - name: Run Pint
         run: ./vendor/bin/pint --test
@@ -96,7 +96,7 @@ jobs:
           restore-keys: composer-
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --ignore-platform-reqs
 
       - name: Copy .env
         run: cp .env.example .env

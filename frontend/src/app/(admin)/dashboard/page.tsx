@@ -156,12 +156,11 @@ export default function DashboardPage() {
                             <XAxis dataKey="label" />
                             <YAxis allowDecimals={false} />
                             <Tooltip
-                                formatter={(value: number) => [
-                                    value,
-                                    "Pedidos",
-                                ]}
-                                labelFormatter={(label: string) =>
-                                    `Dia ${label}`
+                                formatter={(value) =>
+                                    [String(value ?? 0), "Pedidos"]
+                                }
+                                labelFormatter={(label) =>
+                                    `Dia ${String(label)}`
                                 }
                             />
                             <Bar

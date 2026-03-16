@@ -59,7 +59,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: backend
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --ignore-platform-reqs
 
       - name: Setup backend
         working-directory: backend
