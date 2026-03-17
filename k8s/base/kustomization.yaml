@@ -1,0 +1,25 @@
+# ============================================
+# Kustomize - Base
+# ============================================
+# Lista todos os resources que compoem a aplicacao.
+# Os overlays (dev, staging, prod) aplicam patches sobre esta base.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: orderly
+
+commonLabels:
+  app.kubernetes.io/part-of: orderly
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - backend-api-deployment.yaml
+  - backend-api-service.yaml
+  - backend-worker-deployment.yaml
+  - backend-scheduler-cronjob.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - ingress.yaml
+  - hpa.yaml
