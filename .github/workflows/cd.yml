@@ -72,3 +72,49 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_API_URL=/api
+
+      # ---- Deploy to EKS ----
+      deploy:
+        name: Deploy to EKS
+        runs-on: ubuntu-latest
+        needs: build-and-push
+        # Apenas se o build passou
+        if: success()
+        environment: production
+
+        steps:
+          - uses: actions/checkout@v4
+
+          - name: Configure AWS credentials
+            uses: aws-actions/configure-aws-credentials@v4
+            with:
+              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              aws-region: us-east-1
+
+          - name: Update kubeconfig
+            run: |
+              aws eks update-kubeconfig --region us-east-1 --name orderly-prod
+
+          - name: Set image tags
+            run: |
+              SHA_SHORT=$(git rev-parse --short HEAD)
+              cd k8s/overlays/prod
+              kustomize edit set image \
+                orderly/backend=${{ env.BACKEND_IMAGE }}:${SHA_SHORT} \
+                orderly/frontend=${{ env.FRONTEND_IMAGE }}:${SHA_SHORT}
+
+          - name: Deploy to Kubernetes
+            run: |
+              kubectl apply -k k8s/overlays/prod
+              kubectl rollout status deployment/prod-backend-api -n orderly --timeout=300s
+              kubectl rollout status deployment/prod-frontend -n orderly --timeout=300s
+
+          - name: Verify deployment
+            run: |
+              echo "=== Pods ==="
+              kubectl get pods -n orderly
+              echo "=== Services ==="
+              kubectl get svc -n orderly
+              echo "=== Ingress ==="
+              kubectl get ingress -n orderly
