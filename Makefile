@@ -170,3 +170,61 @@ ci-e2e: ## Roda testes E2E como no CI
 ci-build: ## Simula build de producao das imagens
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml build
 	@echo "$(GREEN)>>> Build de producao OK$(NC)"
+
+
+
+# ==========================================
+# TERRAFORM
+# ==========================================
+tf-init-dev: ## Inicializa Terraform (dev)
+	cd terraform/environments/dev && terraform init
+
+tf-plan-dev: ## Preview das mudancas (dev)
+	cd terraform/environments/dev && terraform plan
+
+tf-apply-dev: ## Aplica as mudancas na AWS (dev)
+	cd terraform/environments/dev && terraform apply
+
+tf-destroy-dev: ## Destroi a infra de dev (CUIDADO!)
+	@echo "$(RED)>>> ATENCAO: Isso vai destruir TODA a infraestrutura de dev$(NC)"
+	@read -p "Tem certeza? [y/N] " confirm && [ "$$confirm" = "y" ] && \
+		cd terraform/environments/dev && terraform destroy || echo "Cancelado."
+
+tf-init-prod: ## Inicializa Terraform (prod)
+	cd terraform/environments/prod && terraform init
+
+tf-plan-prod: ## Preview das mudancas (prod)
+	cd terraform/environments/prod && terraform plan
+
+tf-apply-prod: ## Aplica as mudancas na AWS (prod)
+	cd terraform/environments/prod && terraform apply
+
+# ==========================================
+# KUBERNETES
+# ==========================================
+k8s-dev: ## Deploy no cluster dev
+	kubectl apply -k k8s/overlays/dev
+
+k8s-staging: ## Deploy no cluster staging
+	kubectl apply -k k8s/overlays/staging
+
+k8s-prod: ## Deploy no cluster prod
+	kubectl apply -k k8s/overlays/prod
+
+k8s-status: ## Status dos pods
+	kubectl get pods -n orderly -o wide
+
+k8s-logs-api: ## Logs do backend API
+	kubectl logs -n orderly -l app.kubernetes.io/component=backend-api -f
+
+k8s-logs-worker: ## Logs do backend worker
+	kubectl logs -n orderly -l app.kubernetes.io/component=backend-worker -f
+
+k8s-shell: ## Shell no backend API
+	kubectl exec -n orderly -it deploy/backend-api -- sh
+
+k8s-migrate: ## Rodar migrations no cluster
+	kubectl exec -n orderly deploy/backend-api -- php artisan migrate --force
+
+k8s-seed: ## Rodar seeders no cluster
+	kubectl exec -n orderly deploy/backend-api -- php artisan db:seed --force
