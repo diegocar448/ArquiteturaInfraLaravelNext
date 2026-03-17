@@ -1,0 +1,4 @@
+project     = "orderly"
+environment = "prod"
+region      = "us-east-1"
+db_password = "CHANGE_ME_use_a_very_strong_password"
