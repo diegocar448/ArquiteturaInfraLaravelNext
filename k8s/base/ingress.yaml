@@ -1,0 +1,52 @@
+# ============================================
+# Ingress - AWS ALB
+# ============================================
+# Substitui o Nginx do Docker Compose.
+# O AWS Load Balancer Controller cria um ALB automaticamente
+# baseado nessas annotations.
+#
+# Roteamento:
+#   /api/*  → backend-api:9000
+#   /*      → frontend:3000
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orderly-ingress
+  namespace: orderly
+  labels:
+    app.kubernetes.io/name: orderly
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Usar o AWS ALB Ingress Controller
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    # Health check
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    # Subnets publicas (o ALB precisa estar nas public subnets)
+    alb.ingress.kubernetes.io/subnets: ""
+    # SSL (descomente apos configurar certificado no ACM)
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:..."
+    # alb.ingress.kubernetes.io/ssl-redirect: "443"
+spec:
+  rules:
+    - http:
+        paths:
+          # API routes → Backend (PHP-FPM)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-api
+                port:
+                  number: 9000
+          # Everything else → Frontend (Next.js)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
