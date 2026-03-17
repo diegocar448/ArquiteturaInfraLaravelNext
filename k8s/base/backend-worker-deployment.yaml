@@ -1,0 +1,54 @@
+# ============================================
+# Backend Worker - Deployment
+# ============================================
+# Processa jobs da fila Redis (emails, notificacoes, etc.)
+# Nao expoe porta — nao recebe trafego HTTP.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-worker
+  namespace: orderly
+  labels:
+    app.kubernetes.io/name: orderly
+    app.kubernetes.io/component: backend-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orderly
+      app.kubernetes.io/component: backend-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orderly
+        app.kubernetes.io/component: backend-worker
+    spec:
+      containers:
+        - name: backend-worker
+          image: orderly/backend:latest
+          env:
+            - name: CONTAINER_ROLE
+              value: "worker"
+          envFrom:
+            - configMapRef:
+                name: orderly-config
+            - secretRef:
+                name: orderly-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          # Liveness: verifica se o processo do worker esta vivo
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "ps aux | grep 'queue:work' | grep -v grep"
+            initialDelaySeconds: 10
+            periodSeconds: 30
+      # Graceful shutdown: espera o job atual terminar antes de matar
+      terminationGracePeriodSeconds: 120
