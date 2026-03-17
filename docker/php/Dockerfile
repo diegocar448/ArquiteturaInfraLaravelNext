@@ -131,6 +131,11 @@ CMD ["php-fpm"]
 # Imagem de producao otimizada e segura
 FROM base AS production
 
+# Argumento para definir o papel do container
+# Valores: "api" (default), "worker", "scheduler"
+ARG CONTAINER_ROLE=api
+ENV CONTAINER_ROLE=${CONTAINER_ROLE}
+
 # Copiar dependencias do estagio de dependencies
 COPY --from=dependencies /var/www/html/vendor ./vendor
 
@@ -151,17 +156,13 @@ RUN mkdir -p storage/framework/{cache/data,sessions,views} \
     && chown -R orderly:orderly /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 
-# Copiar configuracao do supervisor
-COPY docker/php/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# Copiar script de entrypoint
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Trocar para usuario nao-root
 USER orderly
 
-# Health check - verifica se PHP-FPM esta respondendo
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
-    CMD curl -f http://localhost:9000/health || exit 1
-
 EXPOSE 9000
 
-# Supervisor gerencia PHP-FPM + queue workers
-CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+ENTRYPOINT ["entrypoint.sh"]
