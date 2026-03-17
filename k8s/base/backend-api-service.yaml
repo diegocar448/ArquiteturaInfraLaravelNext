@@ -1,0 +1,21 @@
+# ============================================
+# Backend API - Service (ClusterIP)
+# ============================================
+# Endpoint interno estavel para o Ingress rotear trafego /api
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api
+  namespace: orderly
+  labels:
+    app.kubernetes.io/name: orderly
+    app.kubernetes.io/component: backend-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: orderly
+    app.kubernetes.io/component: backend-api
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
