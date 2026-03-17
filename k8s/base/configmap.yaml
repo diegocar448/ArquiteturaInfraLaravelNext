@@ -1,0 +1,23 @@
+# ============================================
+# ConfigMap - Configuracoes nao-sensiveis
+# ============================================
+# Valores que mudam entre ambientes (dev/staging/prod)
+# sao sobrescritos pelos overlays via Kustomize.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orderly-config
+  namespace: orderly
+data:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "https://orderly.example.com"
+  DB_CONNECTION: "pgsql"
+  DB_PORT: "5432"
+  DB_DATABASE: "orderly"
+  REDIS_PORT: "6379"
+  CACHE_DRIVER: "redis"
+  QUEUE_CONNECTION: "redis"
+  SESSION_DRIVER: "redis"
+  LOG_CHANNEL: "stderr"
+  NEXT_PUBLIC_API_URL: "/api"
