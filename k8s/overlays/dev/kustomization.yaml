@@ -1,0 +1,63 @@
+# ============================================
+# Kustomize Overlay - Dev
+# ============================================
+# Herda tudo da base e aplica customizacoes para dev:
+# - Menos replicas
+# - Imagens do ECR de dev
+# - ConfigMap com valores de dev
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Prefixo para nao colidir com outros ambientes no mesmo cluster
+namePrefix: dev-
+
+# Sobrescrever imagens com as do ECR
+images:
+  - name: orderly/backend
+    newName: 123456789012.dkr.ecr.us-east-1.amazonaws.com/orderly/backend
+    newTag: latest
+  - name: orderly/frontend
+    newName: 123456789012.dkr.ecr.us-east-1.amazonaws.com/orderly/frontend
+    newTag: latest
+
+# Patches para dev
+patches:
+  # Reduzir replicas em dev
+  - target:
+      kind: Deployment
+      name: backend-api
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  # Ajustar HPA para dev
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: backend-api-hpa
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: frontend-hpa
+    patch: |
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 2
