@@ -5,7 +5,8 @@
       "Bash(gh run:*)",
       "Bash(gh api:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(docker stats:*)"
     ]
   }
 }
