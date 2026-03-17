@@ -1,0 +1,7 @@
+# Copie este arquivo para terraform.tfvars e preencha:
+# cp terraform.tfvars.example terraform.tfvars
+
+project     = "orderly"
+environment = "dev"
+region      = "us-east-1"
+db_password = "CHANGE_ME_use_a_strong_password"
