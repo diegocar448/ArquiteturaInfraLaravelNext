@@ -70,6 +70,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [x] Autenticacao de Clientes (JWT)
 - [x] Avaliacoes de Pedidos
 - [x] Dashboard com metricas
+- [ ] Observabilidade (Prometheus + Grafana + Loki) (Fase 13)
 - [ ] Landing page publica (SSR)
 - [x] Testes completos (Unit, Integration, E2E)
 - [x] Documentacao API (OpenAPI/Swagger via Scramble)
@@ -94,6 +95,7 @@ Cada fase esta documentada em um arquivo separado na pasta `docs/`:
 | [Fase 10](docs/fase-10-testes.md) | Testes | Pest, Vitest, Playwright, coverage |
 | [Fase 11](docs/fase-11-cicd.md) | CI/CD GitHub Actions | Workflows CI/E2E/CD, branch protection, badges |
 | [Fase 12](docs/fase-12-kubernetes-terraform.md) | Kubernetes + Terraform | EKS, Kustomize, Terraform modules, GitOps |
+| [Fase 13](docs/fase-13-observabilidade.md) | Observabilidade | Prometheus, Grafana, Loki, logs estruturados, alertas |
 
 ---
 
