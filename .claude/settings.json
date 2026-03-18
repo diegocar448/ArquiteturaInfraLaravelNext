@@ -6,7 +6,8 @@
       "Bash(gh api:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(docker stats:*)"
+      "Bash(docker stats:*)",
+      "Bash(find /home/diegocar448/projects/laravelnextts/docker -type f -name *.dockerfile -o -name Dockerfile* -o -name *.conf)"
     ]
   }
 }
