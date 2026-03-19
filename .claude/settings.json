@@ -7,7 +7,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(docker stats:*)",
-      "Bash(find /home/diegocar448/projects/laravelnextts/docker -type f -name *.dockerfile -o -name Dockerfile* -o -name *.conf)"
+      "Bash(find /home/diegocar448/projects/laravelnextts/docker -type f -name *.dockerfile -o -name Dockerfile* -o -name *.conf)",
+      "Bash(for f:*)",
+      "Bash(do file:*)",
+      "Bash(echo \"CRLF: $f\")",
+      "Bash(git push:*)"
     ]
   }
 }
