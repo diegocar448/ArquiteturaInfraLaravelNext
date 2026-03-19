@@ -1917,6 +1917,18 @@ Voce deve ver tanto a secao **Client** quanto a secao **Server** com informacoes
 
 ### Subindo os containers
 
+> **WSL2: erro `error getting credentials`?**
+> Se ao rodar `docker compose up` voce receber o erro `error getting credentials - err: exit status 1, out:`, o problema esta no arquivo `~/.docker/config.json`. O Docker Desktop configura `credsStore: "desktop.exe"` que nao funciona dentro do WSL.
+>
+> **Solucao:** Edite `~/.docker/config.json` e mude:
+> ```json
+> {
+>   "auths": {},
+>   "credsStore": ""
+> }
+> ```
+> Deixe `credsStore` com valor **vazio** (string vazia, nao remova a chave). Depois tente novamente.
+
 Agora sim, rode:
 
 ```bash

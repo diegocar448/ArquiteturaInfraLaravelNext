@@ -702,6 +702,8 @@ volumes:
 
 ### Subir a stack de monitoramento
 
+> **WSL2: erro `error getting credentials`?** Na primeira vez, o Docker precisa baixar 6 imagens novas (Prometheus, Grafana, exporters). Se receber `error getting credentials`, edite `~/.docker/config.json` e mude `"credsStore"` de `"desktop.exe"` para `""` (string vazia). Veja detalhes no [Passo 1.16](fase-01-infraestrutura-docker.md).
+
 ```bash
 docker compose --profile monitoring up -d
 ```
