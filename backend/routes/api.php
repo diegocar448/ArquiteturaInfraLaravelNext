@@ -19,6 +19,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
+    // Metricas Prometheus (sem autenticacao — acesso interno apenas)
+    Route::get('/metrics', \App\Http\Controllers\Api\V1\MetricsController::class);
+
+    // Health checks (sem autenticacao)
+    Route::get('/health/live', [\App\Http\Controllers\Api\V1\HealthController::class, 'liveness']);
+    Route::get('/health/ready', [\App\Http\Controllers\Api\V1\HealthController::class, 'readiness']);
+
     // --- Rotas publicas de clientes ---
     Route::prefix('client/auth')->group(function () {
         Route::post('/register', [ClientAuthController::class, 'register']);

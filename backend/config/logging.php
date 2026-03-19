@@ -52,6 +52,19 @@ return [
 
     'channels' => [
 
+        'json' => [
+            'driver' => 'monolog',
+            'handler' => \Monolog\Handler\StreamHandler::class,
+            'with' => [
+                'stream' => 'php://stderr',
+            ],
+            'formatter' => \Monolog\Formatter\JsonFormatter::class,
+            'formatter_with' => [
+                'includeStacktraces' => true,
+            ],
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),

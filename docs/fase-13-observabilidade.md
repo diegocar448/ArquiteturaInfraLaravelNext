@@ -95,6 +95,7 @@ docker compose exec backend composer require promphp/prometheus_client_php
 
 ```bash
 docker compose exec backend php artisan make:provider PrometheusServiceProvider
+sudo chown -R $USER:$USER backend/app/Providers/
 ```
 
 **`backend/app/Providers/PrometheusServiceProvider.php`**:
@@ -124,6 +125,7 @@ class PrometheusServiceProvider extends ServiceProvider
 
 ```bash
 docker compose exec backend php artisan make:middleware PrometheusMiddleware
+sudo chown -R $USER:$USER backend/app/Http/Middleware/
 ```
 
 **`backend/app/Http/Middleware/PrometheusMiddleware.php`**:
@@ -182,6 +184,7 @@ class PrometheusMiddleware
 
 ```bash
 docker compose exec backend php artisan make:controller Api/V1/MetricsController
+sudo chown -R $USER:$USER backend/app/Http/Controllers/
 ```
 
 **`backend/app/Http/Controllers/Api/V1/MetricsController.php`**:
@@ -230,14 +233,44 @@ Route::get('/metrics', \App\Http\Controllers\Api\V1\MetricsController::class);
 ### Testar
 
 ```bash
-# Via curl
-docker compose exec nginx curl -s http://localhost/api/metrics
+# Endpoint de metricas (publico, sem autenticacao)
+docker compose exec nginx curl -s http://localhost/api/v1/metrics
 
 # Deve retornar algo como:
 # # HELP app_http_requests_total Total HTTP requests
 # # TYPE app_http_requests_total counter
 # app_http_requests_total{method="GET",route="api/metrics",status="200"} 1
 ```
+
+> **Dica:** Para testar endpoints protegidos (que exigem JWT), use o fluxo abaixo:
+
+```bash
+# 1. Obter token JWT via login
+TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"email":"admin@orderly.com","password":"password"}' \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+# 2. Verificar que o token foi obtido
+echo $TOKEN
+
+# 3. Usar o token para acessar endpoints protegidos
+docker compose exec nginx curl -s http://localhost/api/v1/plans \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. Testar outros endpoints protegidos
+docker compose exec nginx curl -s http://localhost/api/v1/auth/me \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+
+docker compose exec nginx curl -s http://localhost/api/v1/dashboard/metrics \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+> **Importante:** Sempre inclua o header `Accept: application/json` nas requests. Sem ele, o Laravel retorna HTML em vez de JSON nos erros (ex: 401, 500).
 
 ---
 
@@ -317,11 +350,11 @@ Route::get('/health/ready', [\App\Http\Controllers\Api\V1\HealthController::clas
 
 ```bash
 # Liveness (deve retornar 200)
-docker compose exec nginx curl -s http://localhost/api/health/live
+docker compose exec nginx curl -s http://localhost/api/v1/health/live
 # {"status":"ok"}
 
 # Readiness (verifica DB + Redis)
-docker compose exec nginx curl -s http://localhost/api/health/ready
+docker compose exec nginx curl -s http://localhost/api/v1/health/ready
 # {"status":"ok","checks":{"database":"ok","redis":"ok"},"timestamp":"2026-03-17T..."}
 ```
 
@@ -437,12 +470,36 @@ LOG_CHANNEL=stack
 ### Testar
 
 ```bash
-# Fazer uma request
-docker compose exec nginx curl -s http://localhost/api/v1/plans
+# 1. Testar endpoint publico e verificar o header X-Request-ID na resposta
+docker compose exec nginx curl -s -i http://localhost/api/v1/health/live
+# Deve conter: X-Request-ID: <uuid>
 
-# Ver logs do backend em JSON
-docker compose logs backend --tail 5
+# 2. Testar endpoint de metricas (publico)
+docker compose exec nginx curl -s http://localhost/api/v1/metrics
+
+# 3. Obter token JWT para testar endpoints protegidos
+TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"email":"admin@orderly.com","password":"password"}' \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+# 4. Testar endpoint protegido (gera log com request_id)
+docker compose exec nginx curl -s http://localhost/api/v1/plans \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. Ver logs do backend — devem conter request_id, method, uri, ip
+docker compose logs backend --tail 10
+
+# 6. Testar com LOG_CHANNEL=json (producao)
+# Edite backend/.env: LOG_CHANNEL=json
+# Reinicie: docker compose restart backend
+# Faca requests e veja os logs em formato JSON estruturado:
+# docker compose logs backend --tail 5
 ```
+
+> **Dica:** O `X-Request-ID` e propagado em cada resposta HTTP. Voce pode usar esse ID para rastrear uma request especifica em todos os logs (backend, Nginx, Loki). Se o cliente enviar o header `X-Request-ID`, o backend reutiliza — util para correlacionar requests entre frontend e backend.
 
 ---
 
@@ -461,9 +518,9 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Metricas do Laravel (via endpoint /api/metrics)
+  # Metricas do Laravel (via endpoint /api/v1/metrics)
   - job_name: 'laravel'
-    metrics_path: '/api/metrics'
+    metrics_path: '/api/v1/metrics'
     static_configs:
       - targets: ['nginx:80']
         labels:
@@ -644,6 +701,8 @@ volumes:
 ```
 
 ### Subir a stack de monitoramento
+
+> **WSL2: erro `error getting credentials`?** Na primeira vez, o Docker precisa baixar 6 imagens novas (Prometheus, Grafana, exporters). Se receber `error getting credentials`, edite `~/.docker/config.json` e mude `"credsStore"` de `"desktop.exe"` para `""` (string vazia). Veja detalhes no [Passo 1.16](fase-01-infraestrutura-docker.md).
 
 ```bash
 docker compose --profile monitoring up -d
@@ -1095,8 +1154,8 @@ make monitoring-up
 | **Redis Exporter** | Metricas do Redis | :9121 |
 | **Postgres Exporter** | Metricas do PostgreSQL | :9187 |
 | **Nginx Exporter** | Metricas do Nginx | :9113 |
-| **Laravel /metrics** | Metricas da aplicacao | /api/metrics |
-| **Laravel /health** | Health checks (live + ready) | /api/health/live, /api/health/ready |
+| **Laravel /metrics** | Metricas da aplicacao | /api/v1/metrics |
+| **Laravel /health** | Health checks (live + ready) | /api/v1/health/live, /api/v1/health/ready |
 | **Request ID** | Correlacao de logs | Header X-Request-ID |
 | **Alertas** | Regras de alerta Prometheus | Prometheus Alerts UI |
 

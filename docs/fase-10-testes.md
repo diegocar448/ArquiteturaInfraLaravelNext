@@ -1563,6 +1563,8 @@ test.describe("Order Flow", () => {
 
 ### Rodar testes E2E
 
+> **WSL2: erro `error getting credentials`?** Na primeira vez que rodar o profile `e2e`, o Docker precisa baixar a imagem do Playwright. Se receber `error getting credentials`, edite `~/.docker/config.json` e mude `"credsStore"` de `"desktop.exe"` para `""` (string vazia). Veja detalhes no [Passo 1.16](fase-01-infraestrutura-docker.md).
+
 ```bash
 # Certifique-se de que o ambiente esta rodando
 docker compose up -d
