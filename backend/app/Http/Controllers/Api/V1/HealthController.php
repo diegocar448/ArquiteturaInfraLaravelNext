@@ -23,7 +23,7 @@ class HealthController extends Controller
             DB::connection()->getPdo();
             $checks['database'] = 'ok';
         } catch (\Exception $e) {
-            $checks['database'] = 'failed: ' . $e->getMessage();
+            $checks['database'] = 'failed: '.$e->getMessage();
         }
 
         // Verificar Redis
@@ -31,7 +31,7 @@ class HealthController extends Controller
             Cache::store('redis')->put('health_check', true, 10);
             $checks['redis'] = Cache::store('redis')->get('health_check') ? 'ok' : 'failed';
         } catch (\Exception $e) {
-            $checks['redis'] = 'failed: ' . $e->getMessage();
+            $checks['redis'] = 'failed: '.$e->getMessage();
         }
 
         $allHealthy = collect($checks)->every(fn ($status) => $status === 'ok');

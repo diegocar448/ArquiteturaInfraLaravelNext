@@ -11,7 +11,7 @@ class PrometheusServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(CollectorRegistry::class, function () {
-            return new CollectorRegistry(new InMemory());
+            return new CollectorRegistry(new InMemory);
         });
     }
 }

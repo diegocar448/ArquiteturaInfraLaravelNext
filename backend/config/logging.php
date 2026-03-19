@@ -52,7 +52,6 @@ return [
 
     'channels' => [
 
-
         'json' => [
             'driver' => 'monolog',
             'handler' => \Monolog\Handler\StreamHandler::class,

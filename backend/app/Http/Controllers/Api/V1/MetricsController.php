@@ -10,7 +10,7 @@ class MetricsController extends Controller
 {
     public function __invoke(CollectorRegistry $registry): \Illuminate\Http\Response
     {
-        $renderer = new RenderTextFormat();
+        $renderer = new RenderTextFormat;
         $result = $renderer->render($registry->getMetricFamilySamples());
 
         return response($result, 200, [
