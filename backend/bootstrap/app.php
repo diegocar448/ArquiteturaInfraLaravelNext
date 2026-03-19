@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => \App\Http\Middleware\IdentifyTenant::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
+        $middleware->api(append: [
+        \App\Http\Middleware\PrometheusMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

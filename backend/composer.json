@@ -10,6 +10,7 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10",
         "mateusjunges/laravel-kafka": "^2.4",
+        "promphp/prometheus_client_php": "^2.14",
         "tymon/jwt-auth": "^2.1"
     },
     "require-dev": {

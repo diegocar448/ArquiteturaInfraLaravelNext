@@ -200,6 +200,7 @@ JWT (JSON Web Token) e nosso metodo de autenticacao. Diferente do Sanctum (sessi
 ```bash
 # Publicar a configuracao do JWT
 docker compose exec backend php artisan vendor:publish --provider="Tymon\JWTAuth\Providers\LaravelServiceProvider"
+sudo chown -R $USER:$USER backend/config/
 
 # Gerar o JWT secret (adiciona JWT_SECRET no .env)
 docker compose exec backend php artisan jwt:secret

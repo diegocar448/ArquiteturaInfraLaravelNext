@@ -95,6 +95,7 @@ docker compose exec backend composer require promphp/prometheus_client_php
 
 ```bash
 docker compose exec backend php artisan make:provider PrometheusServiceProvider
+sudo chown -R $USER:$USER backend/app/Providers/
 ```
 
 **`backend/app/Providers/PrometheusServiceProvider.php`**:
@@ -124,6 +125,7 @@ class PrometheusServiceProvider extends ServiceProvider
 
 ```bash
 docker compose exec backend php artisan make:middleware PrometheusMiddleware
+sudo chown -R $USER:$USER backend/app/Http/Middleware/
 ```
 
 **`backend/app/Http/Middleware/PrometheusMiddleware.php`**:
@@ -182,6 +184,7 @@ class PrometheusMiddleware
 
 ```bash
 docker compose exec backend php artisan make:controller Api/V1/MetricsController
+sudo chown -R $USER:$USER backend/app/Http/Controllers/
 ```
 
 **`backend/app/Http/Controllers/Api/V1/MetricsController.php`**:
@@ -231,7 +234,7 @@ Route::get('/metrics', \App\Http\Controllers\Api\V1\MetricsController::class);
 
 ```bash
 # Via curl
-docker compose exec nginx curl -s http://localhost/api/metrics
+docker compose exec nginx curl -s http://localhost/api/v1/metrics
 
 # Deve retornar algo como:
 # # HELP app_http_requests_total Total HTTP requests
@@ -461,9 +464,9 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  # Metricas do Laravel (via endpoint /api/metrics)
+  # Metricas do Laravel (via endpoint /api/v1/metrics)
   - job_name: 'laravel'
-    metrics_path: '/api/metrics'
+    metrics_path: '/api/v1/metrics'
     static_configs:
       - targets: ['nginx:80']
         labels:
@@ -1095,7 +1098,7 @@ make monitoring-up
 | **Redis Exporter** | Metricas do Redis | :9121 |
 | **Postgres Exporter** | Metricas do PostgreSQL | :9187 |
 | **Nginx Exporter** | Metricas do Nginx | :9113 |
-| **Laravel /metrics** | Metricas da aplicacao | /api/metrics |
+| **Laravel /metrics** | Metricas da aplicacao | /api/v1/metrics |
 | **Laravel /health** | Health checks (live + ready) | /api/health/live, /api/health/ready |
 | **Request ID** | Correlacao de logs | Header X-Request-ID |
 | **Alertas** | Regras de alerta Prometheus | Prometheus Alerts UI |

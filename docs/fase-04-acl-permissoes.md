@@ -3648,6 +3648,7 @@ O pacote `dedoc/scramble` ja esta no `composer.json` desde o Passo 1.11. Publiqu
 docker compose exec backend php artisan vendor:publish \
   --provider="Dedoc\Scramble\ScrambleServiceProvider" \
   --tag=scramble-config
+sudo chown -R $USER:$USER backend/config/
 ```
 
 ### 2. Configurar o Scramble
