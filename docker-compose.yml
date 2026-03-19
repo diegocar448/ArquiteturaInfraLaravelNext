@@ -334,6 +334,38 @@ services:
       - orderly-network
     restart: unless-stopped
 
+  # Loki - armazena e indexa logs por labels (como "Prometheus para logs")
+  loki:
+    image: grafana/loki:3.5.0
+    container_name: orderly-loki
+    volumes:
+      - ./docker/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    profiles:
+      - monitoring
+    networks:
+      - orderly-network
+    restart: unless-stopped
+
+  # Promtail - agente que coleta logs dos containers e envia ao Loki
+  promtail:
+    image: grafana/promtail:3.5.0
+    container_name: orderly-promtail
+    volumes:
+      - ./docker/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    profiles:
+      - monitoring
+    networks:
+      - orderly-network
+    restart: unless-stopped
+
   # ==========================================
   # PLAYWRIGHT (e2e profile)
   # ==========================================
@@ -389,3 +421,5 @@ volumes:
     name: orderly-prometheus-data
   grafana_data:
     name: orderly-grafana-data
+  loki_data:
+    name: orderly-loki-data
