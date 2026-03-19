@@ -320,11 +320,11 @@ Route::get('/health/ready', [\App\Http\Controllers\Api\V1\HealthController::clas
 
 ```bash
 # Liveness (deve retornar 200)
-docker compose exec nginx curl -s http://localhost/api/health/live
+docker compose exec nginx curl -s http://localhost/api/v1/health/live
 # {"status":"ok"}
 
 # Readiness (verifica DB + Redis)
-docker compose exec nginx curl -s http://localhost/api/health/ready
+docker compose exec nginx curl -s http://localhost/api/v1/health/ready
 # {"status":"ok","checks":{"database":"ok","redis":"ok"},"timestamp":"2026-03-17T..."}
 ```
 
@@ -1099,7 +1099,7 @@ make monitoring-up
 | **Postgres Exporter** | Metricas do PostgreSQL | :9187 |
 | **Nginx Exporter** | Metricas do Nginx | :9113 |
 | **Laravel /metrics** | Metricas da aplicacao | /api/v1/metrics |
-| **Laravel /health** | Health checks (live + ready) | /api/health/live, /api/health/ready |
+| **Laravel /health** | Health checks (live + ready) | /api/v1/health/live, /api/v1/health/ready |
 | **Request ID** | Correlacao de logs | Header X-Request-ID |
 | **Alertas** | Regras de alerta Prometheus | Prometheus Alerts UI |
 
