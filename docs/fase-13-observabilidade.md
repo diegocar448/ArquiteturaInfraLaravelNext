@@ -233,7 +233,7 @@ Route::get('/metrics', \App\Http\Controllers\Api\V1\MetricsController::class);
 ### Testar
 
 ```bash
-# Via curl
+# Endpoint de metricas (publico, sem autenticacao)
 docker compose exec nginx curl -s http://localhost/api/v1/metrics
 
 # Deve retornar algo como:
@@ -241,6 +241,36 @@ docker compose exec nginx curl -s http://localhost/api/v1/metrics
 # # TYPE app_http_requests_total counter
 # app_http_requests_total{method="GET",route="api/metrics",status="200"} 1
 ```
+
+> **Dica:** Para testar endpoints protegidos (que exigem JWT), use o fluxo abaixo:
+
+```bash
+# 1. Obter token JWT via login
+TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"email":"admin@orderly.com","password":"password"}' \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+# 2. Verificar que o token foi obtido
+echo $TOKEN
+
+# 3. Usar o token para acessar endpoints protegidos
+docker compose exec nginx curl -s http://localhost/api/v1/plans \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 4. Testar outros endpoints protegidos
+docker compose exec nginx curl -s http://localhost/api/v1/auth/me \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+
+docker compose exec nginx curl -s http://localhost/api/v1/dashboard/metrics \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+> **Importante:** Sempre inclua o header `Accept: application/json` nas requests. Sem ele, o Laravel retorna HTML em vez de JSON nos erros (ex: 401, 500).
 
 ---
 
@@ -440,12 +470,36 @@ LOG_CHANNEL=stack
 ### Testar
 
 ```bash
-# Fazer uma request
-docker compose exec nginx curl -s http://localhost/api/v1/plans
+# 1. Testar endpoint publico e verificar o header X-Request-ID na resposta
+docker compose exec nginx curl -s -i http://localhost/api/v1/health/live
+# Deve conter: X-Request-ID: <uuid>
 
-# Ver logs do backend em JSON
-docker compose logs backend --tail 5
+# 2. Testar endpoint de metricas (publico)
+docker compose exec nginx curl -s http://localhost/api/v1/metrics
+
+# 3. Obter token JWT para testar endpoints protegidos
+TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"email":"admin@orderly.com","password":"password"}' \
+  | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+
+# 4. Testar endpoint protegido (gera log com request_id)
+docker compose exec nginx curl -s http://localhost/api/v1/plans \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 5. Ver logs do backend — devem conter request_id, method, uri, ip
+docker compose logs backend --tail 10
+
+# 6. Testar com LOG_CHANNEL=json (producao)
+# Edite backend/.env: LOG_CHANNEL=json
+# Reinicie: docker compose restart backend
+# Faca requests e veja os logs em formato JSON estruturado:
+# docker compose logs backend --tail 5
 ```
+
+> **Dica:** O `X-Request-ID` e propagado em cada resposta HTTP. Voce pode usar esse ID para rastrear uma request especifica em todos os logs (backend, Nginx, Loki). Se o cliente enviar o header `X-Request-ID`, o backend reutiliza — util para correlacionar requests entre frontend e backend.
 
 ---
 

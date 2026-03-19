@@ -17,8 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant' => \App\Http\Middleware\IdentifyTenant::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
+        $middleware->api(prepend: [
+            \App\Http\Middleware\ForceJsonResponse::class,
+            \App\Http\Middleware\RequestIdMiddleware::class,
+        ]);
         $middleware->api(append: [
-        \App\Http\Middleware\PrometheusMiddleware::class,
+            \App\Http\Middleware\PrometheusMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
