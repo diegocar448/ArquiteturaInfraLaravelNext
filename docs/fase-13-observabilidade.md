@@ -710,13 +710,19 @@ docker compose --profile monitoring up -d
 
 ### Verificar
 
+> **WSL2:** Use `127.0.0.1` em vez de `localhost` para acessar os servicos de monitoramento no navegador. O `localhost` pode resolver para IPv6 (`::1`) no Windows, e os containers Docker no WSL2 so escutam em IPv4.
+
 ```bash
 # Prometheus (targets devem estar UP)
-# Abrir: http://localhost:9090/targets
+# Abrir: http://127.0.0.1:9090/targets
 
 # Grafana (login: admin / orderly123)
-# Abrir: http://localhost:3001
+# Abrir: http://127.0.0.1:3001
 ```
+
+> **Dica:** Use `make up-monitoring` para subir os servicos principais + observabilidade.
+> Use `make down` para parar todos os containers (incluindo monitoring e e2e).
+> Os servicos de monitoramento **nao sobem** com `make up` — isso e intencional para economizar recursos durante o desenvolvimento.
 
 ---
 
@@ -798,7 +804,7 @@ scrape_configs:
         refresh_interval: 5s
         filters:
           - name: label
-            values: ["com.docker.compose.project=laravelnextts"]
+            values: ["com.docker.compose.project=orderly"]
     relabel_configs:
       # Extrair nome do container como label
       - source_labels: ['__meta_docker_container_name']
@@ -856,11 +862,12 @@ docker compose --profile monitoring up -d
 curl -s http://localhost:3100/ready
 # ready
 
-# No Grafana (http://localhost:3001):
+# No Grafana (http://127.0.0.1:3001):
 # 1. Ir em Explore
 # 2. Selecionar datasource "Loki"
-# 3. Consultar: {service="backend"}
-# 4. Ver os logs do Laravel em tempo real
+# 3. Clicar em "Code" (canto superior direito, ao lado de "Builder")
+# 4. Digitar: {service="backend"}
+# 5. Clicar em "Run query" e ver os logs do Laravel em tempo real
 ```
 
 ---
@@ -999,7 +1006,7 @@ Adicionar volume no `docker-compose.yml` do Grafana:
 # Reiniciar Grafana
 docker compose --profile monitoring restart grafana
 
-# Acessar http://localhost:3001
+# Acessar http://127.0.0.1:3001
 # Login: admin / orderly123
 # Ir em Dashboards > Orderly > Orderly - Overview
 ```
@@ -1102,7 +1109,7 @@ Atualizar volume do Prometheus no `docker-compose.yml`:
 curl -X POST http://localhost:9090/-/reload
 
 # Ver alertas configurados
-# Abrir: http://localhost:9090/alerts
+# Abrir: http://127.0.0.1:9090/alerts
 ```
 
 ---
@@ -1115,9 +1122,9 @@ curl -X POST http://localhost:9090/-/reload
 monitoring-up: ## Subir stack de monitoramento (Prometheus + Grafana + Loki)
 	docker compose --profile monitoring up -d
 	@echo "$(GREEN)>>> Monitoring stack UP$(NC)"
-	@echo "  Prometheus: http://localhost:9090"
-	@echo "  Grafana:    http://localhost:3001 (admin/orderly123)"
-	@echo "  Loki:       http://localhost:3100"
+	@echo "  Prometheus: http://127.0.0.1:9090"
+	@echo "  Grafana:    http://127.0.0.1:3001 (admin/orderly123)"
+	@echo "  Loki:       API interna (:3100) - consulte via Grafana Explore"
 
 monitoring-down: ## Parar stack de monitoramento
 	docker compose --profile monitoring down
@@ -1134,9 +1141,9 @@ monitoring-status: ## Status dos servicos de monitoramento
 
 ```bash
 make monitoring-up
-# Prometheus: http://localhost:9090
-# Grafana:    http://localhost:3001
-# Loki:       http://localhost:3100
+# Prometheus: http://127.0.0.1:9090
+# Grafana:    http://127.0.0.1:3001 (admin/orderly123)
+# Loki:       curl -s http://localhost:3100/ready (API interna, sem interface web)
 ```
 
 ---
@@ -1147,9 +1154,9 @@ make monitoring-up
 
 | Componente | Funcao | Acesso |
 |-----------|--------|--------|
-| **Prometheus** | Coleta metricas (scrape) | http://localhost:9090 |
-| **Grafana** | Dashboards e alertas | http://localhost:3001 |
-| **Loki** | Armazenamento de logs | http://localhost:3100 |
+| **Prometheus** | Coleta metricas (scrape) | http://127.0.0.1:9090 |
+| **Grafana** | Dashboards e alertas | http://127.0.0.1:3001 |
+| **Loki** | Armazenamento de logs | API interna (:3100) — consulte via Grafana Explore |
 | **Promtail** | Coleta logs dos containers | (agente interno) |
 | **Redis Exporter** | Metricas do Redis | :9121 |
 | **Postgres Exporter** | Metricas do PostgreSQL | :9187 |
