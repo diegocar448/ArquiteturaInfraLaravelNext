@@ -15,6 +15,12 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             TenantSeeder::class,
             RoleSeeder::class,
+            TableSeeder::class,
+            CategorySeeder::class,
+            ProductSeeder::class,
+            ClientSeeder::class,
+            OrderSeeder::class,
+            EvaluationSeeder::class,
         ]);
     }
 }
