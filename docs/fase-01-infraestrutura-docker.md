@@ -1757,9 +1757,9 @@ setup: ## Configura o projeto do zero (primeira vez)
 	@docker compose exec frontend npm install
 	@echo "$(GREEN)>>> Setup completo!$(NC)"
 	@echo ""
-	@echo "  Frontend: http://localhost:3000"
-	@echo "  Backend:  http://localhost:8000"
-	@echo "  Nginx:    http://localhost"
+	@echo "  Frontend: http://127.0.0.1:3000"
+	@echo "  Backend:  http://127.0.0.1:8000"
+	@echo "  Nginx:    http://127.0.0.1"
 	@echo ""
 
 # ==========================================

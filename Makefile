@@ -50,9 +50,9 @@ setup: ## Configura o projeto do zero (primeira vez)
 	@docker compose exec frontend npm install
 	@echo "$(GREEN)>>> Setup completo!$(NC)"
 	@echo ""
-	@echo "  Frontend: http://localhost:3000"
-	@echo "  Backend:  http://localhost:8000"
-	@echo "  Nginx:    http://localhost"
+	@echo "  Frontend: http://127.0.0.1:3000"
+	@echo "  Backend:  http://127.0.0.1:8000"
+	@echo "  Nginx:    http://127.0.0.1"
 	@echo ""
 
 # ==========================================
@@ -61,8 +61,23 @@ setup: ## Configura o projeto do zero (primeira vez)
 up: ## Sobe o ambiente de desenvolvimento
 	docker compose up -d
 
-up-monitoring: ## Sobe com stack de observabilidade (Prometheus, Grafana, Loki)
+# ── Observabilidade ─────────────────────────────────────────────
+monitoring-up: ## Subir stack de monitoramento (Prometheus + Grafana + Loki)
 	docker compose --profile monitoring up -d
+	@echo "$(GREEN)>>> Monitoring stack UP$(NC)"
+	@echo "  Prometheus: http://127.0.0.1:9090"
+	@echo "  Grafana:    http://127.0.0.1:3001 (admin/orderly123)"
+	@echo "  Loki:       API interna (:3100) - consulte via Grafana Explore"
+
+monitoring-down: ## Parar stack de monitoramento
+	docker compose --profile monitoring down
+	@echo "$(YELLOW)>>> Monitoring stack DOWN$(NC)"
+
+monitoring-logs: ## Ver logs da stack de monitoramento
+	docker compose --profile monitoring logs -f prometheus grafana loki promtail
+
+monitoring-status: ## Status dos servicos de monitoramento
+	@docker compose --profile monitoring ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
 
 down: ## Para todos os containers (incluindo monitoring e e2e)
 	docker compose --profile monitoring --profile e2e down

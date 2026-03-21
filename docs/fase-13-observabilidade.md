@@ -1124,7 +1124,7 @@ monitoring-up: ## Subir stack de monitoramento (Prometheus + Grafana + Loki)
 	@echo "$(GREEN)>>> Monitoring stack UP$(NC)"
 	@echo "  Prometheus: http://127.0.0.1:9090"
 	@echo "  Grafana:    http://127.0.0.1:3001 (admin/orderly123)"
-	@echo "  Loki:       http://127.0.0.1:3100"
+	@echo "  Loki:       API interna (:3100) - consulte via Grafana Explore"
 
 monitoring-down: ## Parar stack de monitoramento
 	docker compose --profile monitoring down
@@ -1142,8 +1142,8 @@ monitoring-status: ## Status dos servicos de monitoramento
 ```bash
 make monitoring-up
 # Prometheus: http://127.0.0.1:9090
-# Grafana:    http://127.0.0.1:3001
-# Loki:       http://127.0.0.1:3100
+# Grafana:    http://127.0.0.1:3001 (admin/orderly123)
+# Loki:       curl -s http://localhost:3100/ready (API interna, sem interface web)
 ```
 
 ---
@@ -1156,7 +1156,7 @@ make monitoring-up
 |-----------|--------|--------|
 | **Prometheus** | Coleta metricas (scrape) | http://127.0.0.1:9090 |
 | **Grafana** | Dashboards e alertas | http://127.0.0.1:3001 |
-| **Loki** | Armazenamento de logs | http://127.0.0.1:3100 |
+| **Loki** | Armazenamento de logs | API interna (:3100) — consulte via Grafana Explore |
 | **Promtail** | Coleta logs dos containers | (agente interno) |
 | **Redis Exporter** | Metricas do Redis | :9121 |
 | **Postgres Exporter** | Metricas do PostgreSQL | :9187 |
