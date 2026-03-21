@@ -61,11 +61,11 @@ setup: ## Configura o projeto do zero (primeira vez)
 up: ## Sobe o ambiente de desenvolvimento
 	docker compose up -d
 
-up-monitoring: ## Sobe com Kafka UI
+up-monitoring: ## Sobe com stack de observabilidade (Prometheus, Grafana, Loki)
 	docker compose --profile monitoring up -d
 
-down: ## Para todos os containers
-	docker compose down
+down: ## Para todos os containers (incluindo monitoring e e2e)
+	docker compose --profile monitoring --profile e2e down
 
 build: ## Rebuild das imagens Docker
 	docker compose build --no-cache

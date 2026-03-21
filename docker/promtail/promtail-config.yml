@@ -14,7 +14,7 @@ scrape_configs:
         refresh_interval: 5s
         filters:
           - name: label
-            values: ["com.docker.compose.project=laravelnextts"]
+            values: ["com.docker.compose.project=orderly"]
     relabel_configs:
       # Extrair nome do container como label
       - source_labels: ['__meta_docker_container_name']
