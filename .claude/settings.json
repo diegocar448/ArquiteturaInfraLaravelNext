@@ -22,7 +22,10 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3001/login)",
       "Bash(docker rm:*)",
       "Bash(curl -X POST http://localhost:9090/-/reload)",
-      "Bash(curl -s http://localhost:9090/api/v1/rules)"
+      "Bash(curl -s http://localhost:9090/api/v1/rules)",
+      "Bash(grep -r \"laravel-kafka\\\\|Kafka\\\\|KafkaProducer\\\\|publish.*kafka\" /home/diegocar448/projects/laravelnextts/backend --include=*.php)",
+      "Bash(find /home/diegocar448/projects/laravelnextts/docs -name *kafka* -o -name *observ*)",
+      "Bash(ls -la /home/diegocar448/projects/laravelnextts/docker/*/)"
     ]
   }
 }
