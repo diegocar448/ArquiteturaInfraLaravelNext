@@ -15,7 +15,8 @@
         backend-shell frontend-shell db-shell \
         test test-backend test-frontend test-e2e \
         lint lint-backend lint-frontend \
-        migrate seed fresh
+        migrate seed fresh \
+        kafka-topics kafka-consumers kafka-consume-orders
 
 # Cores para output
 GREEN  := \033[0;32m
@@ -176,6 +177,18 @@ prod-up: ## Sobe ambiente de producao
 # ==========================================
 # CI/CD (local simulation)
 # ==========================================
+# ==========================================
+# KAFKA
+# ==========================================
+kafka-topics: ## Listar topics do Kafka
+	docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+kafka-consumers: ## Listar consumer groups e lag
+	docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+
+kafka-consume-orders: ## Iniciar consumer de eventos de pedidos
+	docker compose exec backend php artisan kafka:consume-orders
+
 ci: lint test ## Simula o pipeline CI localmente
 	@echo "$(GREEN)>>> CI passed!$(NC)"
 
