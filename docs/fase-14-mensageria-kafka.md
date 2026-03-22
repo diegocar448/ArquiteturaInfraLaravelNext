@@ -1000,45 +1000,23 @@ make kafka-consume-orders
 Em testes, nao queremos depender do Kafka real. O `KafkaProducer` foi registrado como singleton, entao podemos mockar:
 
 **`backend/tests/Feature/Api/OrderKafkaTest.php`**:
+
+> **Nota:** Usamos a sintaxe Pest (consistente com os outros testes do projeto) e os helpers `createAdminUser()` + `authHeaders()` definidos em `tests/Pest.php`. O `createAdminUser()` cria um usuario super-admin que faz bypass do ACL. O payload de pedido usa `product_id`/`qty` (nao `id`/`quantity`). O `table_id` e nullable, entao nao precisamos de `TableFactory`.
+
 ```php
 <?php
-
-namespace Tests\Feature\Api;
 
 use App\Kafka\Events\OrderCreatedEvent;
 use App\Kafka\Events\OrderStatusChangedEvent;
 use App\Kafka\Producers\KafkaProducer;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\Table;
-use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Tests\TestCase;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
-class OrderKafkaTest extends TestCase
-{
-    use RefreshDatabase;
+describe('Order Kafka Events', function () {
+    it('publishes kafka event when creating order', function () {
+        $user = createAdminUser();
 
-    private User $user;
-
-    private Tenant $tenant;
-
-    private string $token;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->token = JWTAuth::fromUser($this->user);
-    }
-
-    public function test_creating_order_publishes_kafka_event(): void
-    {
         $mock = Mockery::mock(KafkaProducer::class);
         $mock->shouldReceive('publish')
             ->once()
@@ -1046,22 +1024,21 @@ class OrderKafkaTest extends TestCase
 
         $this->app->instance(KafkaProducer::class, $mock);
 
-        $table = Table::factory()->create(['tenant_id' => $this->tenant->id]);
-        $product = Product::factory()->create(['tenant_id' => $this->tenant->id]);
+        $product = Product::factory()->create(['tenant_id' => $user->tenant_id]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+        $response = $this->withHeaders(authHeaders($user))
             ->postJson('/api/v1/orders', [
-                'table_id' => $table->id,
                 'products' => [
-                    ['id' => $product->id, 'quantity' => 2, 'price' => $product->price],
+                    ['product_id' => $product->id, 'qty' => 2],
                 ],
             ]);
 
-        $response->assertStatus(201);
-    }
+        $response->assertCreated();
+    });
 
-    public function test_updating_order_status_publishes_kafka_event(): void
-    {
+    it('publishes kafka event when updating order status', function () {
+        $user = createAdminUser();
+
         $mock = Mockery::mock(KafkaProducer::class);
         $mock->shouldReceive('publish')
             ->once()
@@ -1070,38 +1047,39 @@ class OrderKafkaTest extends TestCase
         $this->app->instance(KafkaProducer::class, $mock);
 
         $order = Order::factory()->create([
-            'tenant_id' => $this->tenant->id,
+            'tenant_id' => $user->tenant_id,
             'status' => Order::STATUS_OPEN,
         ]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+        $response = $this->withHeaders(authHeaders($user))
             ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'accepted',
             ]);
 
-        $response->assertStatus(200);
-    }
+        $response->assertOk();
+    });
 
-    public function test_rejected_transition_does_not_publish_event(): void
-    {
+    it('does not publish kafka event on rejected transition', function () {
+        $user = createAdminUser();
+
         $mock = Mockery::mock(KafkaProducer::class);
         $mock->shouldNotReceive('publish');
 
         $this->app->instance(KafkaProducer::class, $mock);
 
         $order = Order::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'status' => Order::STATUS_DELIVERED, // terminal state
+            'tenant_id' => $user->tenant_id,
+            'status' => Order::STATUS_DELIVERED,
         ]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+        $response = $this->withHeaders(authHeaders($user))
             ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'open',
             ]);
 
-        $response->assertStatus(422);
-    }
-}
+        $response->assertUnprocessable();
+    });
+});
 ```
 
 ### Rodar os testes
