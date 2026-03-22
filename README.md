@@ -25,7 +25,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 | UI | shadcn/ui + Tailwind CSS | latest |
 | Banco | PostgreSQL | 16 |
 | Cache/Queue | Redis | 7 |
-| Mensageria | Apache Kafka (KRaft) | 4.0 |
+| Mensageria | Apache Kafka (KRaft) | 4.2 |
 | Auth | JWT (tymon/jwt-auth) | latest |
 | Containers | Docker + Docker Compose | latest |
 | Orquestracao | Kubernetes + Kustomize | latest |

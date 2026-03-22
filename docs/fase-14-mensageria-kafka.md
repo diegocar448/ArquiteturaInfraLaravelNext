@@ -84,7 +84,7 @@ Cliente → API (cria pedido) → salva no banco → publica evento → responde
 
 **Para portfolio:** Kafka mostra que voce sabe trabalhar com arquitetura event-driven e sistemas distribuidos — um diferencial forte em entrevistas.
 
-> **Nota:** O Orderly ja tem o Kafka configurado no Docker desde a Fase 1 (imagem `apache/kafka:4.0.0` em KRaft mode). O pacote `mateusjunges/laravel-kafka` tambem ja esta no `composer.json`. Nesta fase vamos apenas implementar os eventos de negocio.
+> **Nota:** O Orderly ja tem o Kafka configurado no Docker desde a Fase 1 (imagem `apache/kafka:4.2.0` em KRaft mode). O pacote `mateusjunges/laravel-kafka` tambem ja esta no `composer.json`. Nesta fase vamos apenas implementar os eventos de negocio.
 
 ---
 
@@ -104,7 +104,7 @@ Isso cria o arquivo `backend/config/kafka.php`.
 As variaveis ja devem estar no `.env`:
 
 ```env
-KAFKA_BROKER=kafka:9092
+KAFKA_BROKERS=kafka:9092
 KAFKA_GROUP_ID=orderly-group
 ```
 
@@ -607,11 +607,12 @@ namespace App\Kafka\Consumers;
 
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
+use Junges\Kafka\Contracts\Handler;
 use Junges\Kafka\Contracts\MessageConsumer;
 
-class OrderEventsHandler implements MessageConsumer
+class OrderEventsHandler implements Handler
 {
-    public function handle(ConsumerMessage $message): void
+    public function __invoke(ConsumerMessage $message, MessageConsumer $consumer): void
     {
         $body = $message->getBody();
         $headers = $message->getHeaders();
@@ -751,8 +752,14 @@ docker compose exec nginx curl -s http://localhost/api/v1/orders \
   -d '{"table_id":1,"products":[{"product_id":3,"qty":1}]}'
 
 # Atualizar status (dispara order.status_changed)
-# Substitua {ORDER_ID} pelo id retornado acima
-docker compose exec nginx curl -s -X PUT http://localhost/api/v1/orders/{ORDER_ID} \
+# Primeiro, pegue o ID do pedido criado acima:
+ORDER_ID=$(docker compose exec nginx curl -s http://localhost/api/v1/orders \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+echo "Order ID: $ORDER_ID"
+
+# Atualizar o status para "accepted"
+docker compose exec nginx curl -s -X PUT http://localhost/api/v1/orders/$ORDER_ID \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer $TOKEN" \
@@ -789,22 +796,23 @@ namespace App\Kafka\Consumers;
 
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
+use Junges\Kafka\Contracts\Handler;
 use Junges\Kafka\Contracts\MessageConsumer;
 
-class RetryableHandler implements MessageConsumer
+class RetryableHandler implements Handler
 {
     public function __construct(
-        private readonly MessageConsumer $innerHandler,
+        private readonly Handler $innerHandler,
         private readonly int $maxRetries = 3,
     ) {}
 
-    public function handle(ConsumerMessage $message): void
+    public function __invoke(ConsumerMessage $message, MessageConsumer $consumer): void
     {
         $attempts = 0;
 
         while ($attempts < $this->maxRetries) {
             try {
-                $this->innerHandler->handle($message);
+                ($this->innerHandler)($message, $consumer);
 
                 return; // Sucesso, sai do loop
             } catch (\Exception $e) {
