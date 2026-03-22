@@ -25,7 +25,7 @@ class ConsumeOrderEvents extends Command
 
         try {
             $handler = new RetryableHandler(
-                innerHandler: new OrderEventsHandler(),
+                innerHandler: new OrderEventsHandler,
                 maxRetries: 3,
             );
 
@@ -37,9 +37,6 @@ class ConsumeOrderEvents extends Command
                 ->withConsumerGroupId('orderly-orders-consumer')
                 ->withHandler($handler)
                 ->withAutoCommit()
-                ->withOptions([
-                    'auto.offset.reset' => 'earliest',
-                ])
                 ->build()
                 ->consume();
         } catch (\Exception $e) {
