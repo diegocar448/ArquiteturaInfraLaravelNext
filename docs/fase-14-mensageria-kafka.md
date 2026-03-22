@@ -533,25 +533,37 @@ final class UpdateOrderStatusAction
 
 ### Testar a publicacao
 
+> **Pre-requisito:** Certifique-se de que os seeders foram executados para ter dados no banco (produtos, mesas, usuario admin):
+> ```bash
+> docker compose exec backend php artisan db:seed
+> ```
+
 ```bash
 # 1. Verificar que o Kafka esta rodando
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
-# 2. Obter token JWT
+# 2. Obter token JWT (use gerente@demo.com — o admin nao tem tenant_id)
 TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"email":"admin@orderly.com","password":"password"}' \
+  -d '{"email":"gerente@demo.com","password":"password"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 
-# 3. Criar um pedido (dispara OrderCreatedEvent)
+# 3. Verificar IDs de produtos disponiveis
+docker compose exec nginx curl -s http://localhost/api/v1/products \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN" | grep -o '"id":[0-9]*' | head -5
+# Use um dos IDs retornados no comando abaixo (ex: 3)
+
+# 4. Criar um pedido (dispara OrderCreatedEvent)
+# Substitua o product_id pelo ID retornado no passo anterior
 docker compose exec nginx curl -s http://localhost/api/v1/orders \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"table_id":1,"products":[{"id":1,"quantity":2,"price":29.90}]}'
+  -d '{"table_id":1,"products":[{"product_id":3,"qty":2}]}'
 
-# 4. Verificar que o topic foi criado automaticamente
+# 5. Verificar que o topic foi criado automaticamente
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 # orderly.orders.created
 
@@ -724,11 +736,11 @@ docker compose exec backend php artisan kafka:consume-orders
 
 **Terminal 2 — Produzir eventos (criar/atualizar pedidos):**
 ```bash
-# Obter token
+# Obter token (use gerente@demo.com — tem tenant_id vinculado)
 TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"email":"admin@orderly.com","password":"password"}' \
+  -d '{"email":"gerente@demo.com","password":"password"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 
 # Criar pedido (dispara order.created)
@@ -736,7 +748,7 @@ docker compose exec nginx curl -s http://localhost/api/v1/orders \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"table_id":1,"products":[{"id":1,"quantity":1,"price":29.90}]}'
+  -d '{"table_id":1,"products":[{"product_id":3,"qty":1}]}'
 
 # Atualizar status (dispara order.status_changed)
 # Substitua {ORDER_ID} pelo id retornado acima
