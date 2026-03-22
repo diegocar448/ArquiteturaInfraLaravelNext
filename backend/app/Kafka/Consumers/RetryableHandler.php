@@ -29,7 +29,7 @@ class RetryableHandler implements Handler
                 $headers = $message->getHeaders();
                 $eventId = $headers['event_id'] ?? 'unknown';
 
-                Log::channel('stderr')->warning("Kafka consumer retry", [
+                Log::channel('stderr')->warning('Kafka consumer retry', [
                     'topic' => $topic,
                     'event_id' => $eventId,
                     'attempt' => $attempts,
@@ -52,7 +52,7 @@ class RetryableHandler implements Handler
     private function sendToDlq(ConsumerMessage $message, \Exception $error): void
     {
         $topic = $message->getTopicName();
-        $dlqTopic = $topic . '.dlq';
+        $dlqTopic = $topic.'.dlq';
 
         try {
             \Junges\Kafka\Facades\Kafka::publish()
@@ -65,13 +65,13 @@ class RetryableHandler implements Handler
                 ]))
                 ->send();
 
-            Log::channel('stderr')->error("Message sent to DLQ", [
+            Log::channel('stderr')->error('Message sent to DLQ', [
                 'original_topic' => $topic,
                 'dlq_topic' => $dlqTopic,
                 'error' => $error->getMessage(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('stderr')->critical("Failed to send message to DLQ", [
+            Log::channel('stderr')->critical('Failed to send message to DLQ', [
                 'original_topic' => $topic,
                 'error' => $e->getMessage(),
             ]);

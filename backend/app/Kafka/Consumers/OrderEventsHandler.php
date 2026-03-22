@@ -18,7 +18,7 @@ class OrderEventsHandler implements Handler
         $eventType = $headers['event_type'] ?? 'unknown';
         $data = $body['data'] ?? [];
 
-        Log::channel('stderr')->info("Kafka event consumed", [
+        Log::channel('stderr')->info('Kafka event consumed', [
             'topic' => $topic,
             'event_type' => $eventType,
             'event_id' => $data['event_id'] ?? null,
@@ -36,7 +36,7 @@ class OrderEventsHandler implements Handler
     {
         $order = $data['order'] ?? [];
 
-        Log::channel('stderr')->info("New order received", [
+        Log::channel('stderr')->info('New order received', [
             'identify' => $order['identify'] ?? null,
             'total' => $order['total'] ?? 0,
             'products_count' => $order['products_count'] ?? 0,
@@ -52,7 +52,7 @@ class OrderEventsHandler implements Handler
     {
         $order = $data['order'] ?? [];
 
-        Log::channel('stderr')->info("Order status changed", [
+        Log::channel('stderr')->info('Order status changed', [
             'identify' => $order['identify'] ?? null,
             'from' => $order['previous_status'] ?? null,
             'to' => $order['new_status'] ?? null,
