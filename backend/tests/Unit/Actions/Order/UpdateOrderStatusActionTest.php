@@ -2,6 +2,7 @@
 
 use App\Actions\Order\UpdateOrderStatusAction;
 use App\DTOs\Order\UpdateOrderStatusDTO;
+use App\Kafka\Producers\KafkaProducer;
 use App\Models\Order;
 use App\Repositories\Contracts\OrderRepositoryInterface;
 
@@ -18,7 +19,9 @@ describe('UpdateOrderStatusAction', function () {
             ->with(1)
             ->andReturn($order);
 
-        $action = new UpdateOrderStatusAction($repository);
+        $producer = Mockery::mock(KafkaProducer::class);
+
+        $action = new UpdateOrderStatusAction($repository, $producer);
         $dto = new UpdateOrderStatusDTO(status: 'delivered');
         $result = $action->execute(1, $dto);
 
@@ -43,7 +46,10 @@ describe('UpdateOrderStatusAction', function () {
             ->with(1, ['status' => 'accepted'])
             ->once();
 
-        $action = new UpdateOrderStatusAction($repository);
+        $producer = Mockery::mock(KafkaProducer::class);
+        $producer->shouldReceive('publish')->once();
+
+        $action = new UpdateOrderStatusAction($repository, $producer);
         $dto = new UpdateOrderStatusDTO(status: 'accepted');
         $result = $action->execute(1, $dto);
 
@@ -56,7 +62,9 @@ describe('UpdateOrderStatusAction', function () {
             ->with(999)
             ->andReturnNull();
 
-        $action = new UpdateOrderStatusAction($repository);
+        $producer = Mockery::mock(KafkaProducer::class);
+
+        $action = new UpdateOrderStatusAction($repository, $producer);
         $dto = new UpdateOrderStatusDTO(status: 'accepted');
         $result = $action->execute(999, $dto);
 

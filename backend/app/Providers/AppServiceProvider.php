@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Kafka\Producers\KafkaProducer;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
@@ -15,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(KafkaProducer::class);
     }
 
     /**

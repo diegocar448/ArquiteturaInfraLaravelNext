@@ -78,7 +78,7 @@ services:
       CACHE_DRIVER: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
-      KAFKA_BROKER: kafka:9092
+      KAFKA_BROKERS: kafka:9092
       # Xdebug config
       XDEBUG_MODE: debug,coverage
       PHP_IDE_CONFIG: serverName=orderly
@@ -183,15 +183,15 @@ services:
   # KRaft mode = Kafka gerencia seu proprio consenso,
   # eliminando a necessidade do ZooKeeper (mais simples)
   kafka:
-    image: apache/kafka:4.0.0
+    image: apache/kafka:4.2.0
     container_name: orderly-kafka
     ports:
-      - "9092:9092"
+      - "9094:9094"
     environment:
       # KRaft mode configuration (imagem oficial Apache Kafka)
-      KAFKA_NODE_ID: 0
-      KAFKA_PROCESS_ROLES: controller,broker
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       # Listeners
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
@@ -202,18 +202,18 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       # Retencao de mensagens (7 dias)
       KAFKA_LOG_RETENTION_HOURS: 168
-      # Cluster ID obrigatorio para KRaft
-      CLUSTER_ID: orderly-kafka-cluster-001
+      # Replication factor para single-node
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     volumes:
-      - kafka-data:/tmp/kafka-logs
-    # appuser (uid 1000) precisa de permissao no volume
-    user: root
+      - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 9092"]
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 60s
     networks:
       - orderly-network
     restart: unless-stopped
@@ -224,7 +224,7 @@ services:
   # Interface web para visualizar topics, mensagens, consumers
   # So sobe com: docker compose --profile monitoring up
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:v0.7.2
     container_name: orderly-kafka-ui
     ports:
       - "8080:8080"

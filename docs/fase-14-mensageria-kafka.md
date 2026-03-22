@@ -84,7 +84,7 @@ Cliente → API (cria pedido) → salva no banco → publica evento → responde
 
 **Para portfolio:** Kafka mostra que voce sabe trabalhar com arquitetura event-driven e sistemas distribuidos — um diferencial forte em entrevistas.
 
-> **Nota:** O Orderly ja tem o Kafka configurado no Docker desde a Fase 1 (imagem `apache/kafka:4.0.0` em KRaft mode). O pacote `mateusjunges/laravel-kafka` tambem ja esta no `composer.json`. Nesta fase vamos apenas implementar os eventos de negocio.
+> **Nota:** O Orderly ja tem o Kafka configurado no Docker desde a Fase 1 (imagem `apache/kafka:4.2.0` em KRaft mode). O pacote `mateusjunges/laravel-kafka` tambem ja esta no `composer.json`. Nesta fase vamos apenas implementar os eventos de negocio.
 
 ---
 
@@ -104,7 +104,7 @@ Isso cria o arquivo `backend/config/kafka.php`.
 As variaveis ja devem estar no `.env`:
 
 ```env
-KAFKA_BROKER=kafka:9092
+KAFKA_BROKERS=kafka:9092
 KAFKA_GROUP_ID=orderly-group
 ```
 
@@ -533,25 +533,37 @@ final class UpdateOrderStatusAction
 
 ### Testar a publicacao
 
+> **Pre-requisito:** Certifique-se de que os seeders foram executados para ter dados no banco (produtos, mesas, usuario admin):
+> ```bash
+> docker compose exec backend php artisan db:seed
+> ```
+
 ```bash
 # 1. Verificar que o Kafka esta rodando
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
-# 2. Obter token JWT
+# 2. Obter token JWT (use gerente@demo.com — o admin nao tem tenant_id)
 TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"email":"admin@orderly.com","password":"password"}' \
+  -d '{"email":"gerente@demo.com","password":"password"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 
-# 3. Criar um pedido (dispara OrderCreatedEvent)
+# 3. Verificar IDs de produtos disponiveis
+docker compose exec nginx curl -s http://localhost/api/v1/products \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN" | grep -o '"id":[0-9]*' | head -5
+# Use um dos IDs retornados no comando abaixo (ex: 3)
+
+# 4. Criar um pedido (dispara OrderCreatedEvent)
+# Substitua o product_id pelo ID retornado no passo anterior
 docker compose exec nginx curl -s http://localhost/api/v1/orders \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"table_id":1,"products":[{"id":1,"quantity":2,"price":29.90}]}'
+  -d '{"table_id":1,"products":[{"product_id":3,"qty":2}]}'
 
-# 4. Verificar que o topic foi criado automaticamente
+# 5. Verificar que o topic foi criado automaticamente
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 # orderly.orders.created
 
@@ -595,11 +607,12 @@ namespace App\Kafka\Consumers;
 
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
+use Junges\Kafka\Contracts\Handler;
 use Junges\Kafka\Contracts\MessageConsumer;
 
-class OrderEventsHandler implements MessageConsumer
+class OrderEventsHandler implements Handler
 {
-    public function handle(ConsumerMessage $message): void
+    public function __invoke(ConsumerMessage $message, MessageConsumer $consumer): void
     {
         $body = $message->getBody();
         $headers = $message->getHeaders();
@@ -724,11 +737,11 @@ docker compose exec backend php artisan kafka:consume-orders
 
 **Terminal 2 — Produzir eventos (criar/atualizar pedidos):**
 ```bash
-# Obter token
+# Obter token (use gerente@demo.com — tem tenant_id vinculado)
 TOKEN=$(docker compose exec nginx curl -s http://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"email":"admin@orderly.com","password":"password"}' \
+  -d '{"email":"gerente@demo.com","password":"password"}' \
   | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
 
 # Criar pedido (dispara order.created)
@@ -736,11 +749,17 @@ docker compose exec nginx curl -s http://localhost/api/v1/orders \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"table_id":1,"products":[{"id":1,"quantity":1,"price":29.90}]}'
+  -d '{"table_id":1,"products":[{"product_id":3,"qty":1}]}'
 
 # Atualizar status (dispara order.status_changed)
-# Substitua {ORDER_ID} pelo id retornado acima
-docker compose exec nginx curl -s -X PUT http://localhost/api/v1/orders/{ORDER_ID} \
+# Primeiro, pegue o ID do pedido criado acima:
+ORDER_ID=$(docker compose exec nginx curl -s http://localhost/api/v1/orders \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer $TOKEN" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
+echo "Order ID: $ORDER_ID"
+
+# Atualizar o status para "accepted"
+docker compose exec nginx curl -s -X PUT http://localhost/api/v1/orders/$ORDER_ID \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer $TOKEN" \
@@ -777,22 +796,23 @@ namespace App\Kafka\Consumers;
 
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
+use Junges\Kafka\Contracts\Handler;
 use Junges\Kafka\Contracts\MessageConsumer;
 
-class RetryableHandler implements MessageConsumer
+class RetryableHandler implements Handler
 {
     public function __construct(
-        private readonly MessageConsumer $innerHandler,
+        private readonly Handler $innerHandler,
         private readonly int $maxRetries = 3,
     ) {}
 
-    public function handle(ConsumerMessage $message): void
+    public function __invoke(ConsumerMessage $message, MessageConsumer $consumer): void
     {
         $attempts = 0;
 
         while ($attempts < $this->maxRetries) {
             try {
-                $this->innerHandler->handle($message);
+                ($this->innerHandler)($message, $consumer);
 
                 return; // Sucesso, sai do loop
             } catch (\Exception $e) {
@@ -980,45 +1000,23 @@ make kafka-consume-orders
 Em testes, nao queremos depender do Kafka real. O `KafkaProducer` foi registrado como singleton, entao podemos mockar:
 
 **`backend/tests/Feature/Api/OrderKafkaTest.php`**:
+
+> **Nota:** Usamos a sintaxe Pest (consistente com os outros testes do projeto) e os helpers `createAdminUser()` + `authHeaders()` definidos em `tests/Pest.php`. O `createAdminUser()` cria um usuario super-admin que faz bypass do ACL. O payload de pedido usa `product_id`/`qty` (nao `id`/`quantity`). O `table_id` e nullable, entao nao precisamos de `TableFactory`.
+
 ```php
 <?php
-
-namespace Tests\Feature\Api;
 
 use App\Kafka\Events\OrderCreatedEvent;
 use App\Kafka\Events\OrderStatusChangedEvent;
 use App\Kafka\Producers\KafkaProducer;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\Table;
-use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Tests\TestCase;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
-class OrderKafkaTest extends TestCase
-{
-    use RefreshDatabase;
+describe('Order Kafka Events', function () {
+    it('publishes kafka event when creating order', function () {
+        $user = createAdminUser();
 
-    private User $user;
-
-    private Tenant $tenant;
-
-    private string $token;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->tenant = Tenant::factory()->create();
-        $this->user = User::factory()->create(['tenant_id' => $this->tenant->id]);
-        $this->token = JWTAuth::fromUser($this->user);
-    }
-
-    public function test_creating_order_publishes_kafka_event(): void
-    {
         $mock = Mockery::mock(KafkaProducer::class);
         $mock->shouldReceive('publish')
             ->once()
@@ -1026,22 +1024,21 @@ class OrderKafkaTest extends TestCase
 
         $this->app->instance(KafkaProducer::class, $mock);
 
-        $table = Table::factory()->create(['tenant_id' => $this->tenant->id]);
-        $product = Product::factory()->create(['tenant_id' => $this->tenant->id]);
+        $product = Product::factory()->create(['tenant_id' => $user->tenant_id]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+        $response = $this->withHeaders(authHeaders($user))
             ->postJson('/api/v1/orders', [
-                'table_id' => $table->id,
                 'products' => [
-                    ['id' => $product->id, 'quantity' => 2, 'price' => $product->price],
+                    ['product_id' => $product->id, 'qty' => 2],
                 ],
             ]);
 
-        $response->assertStatus(201);
-    }
+        $response->assertCreated();
+    });
 
-    public function test_updating_order_status_publishes_kafka_event(): void
-    {
+    it('publishes kafka event when updating order status', function () {
+        $user = createAdminUser();
+
         $mock = Mockery::mock(KafkaProducer::class);
         $mock->shouldReceive('publish')
             ->once()
@@ -1050,38 +1047,39 @@ class OrderKafkaTest extends TestCase
         $this->app->instance(KafkaProducer::class, $mock);
 
         $order = Order::factory()->create([
-            'tenant_id' => $this->tenant->id,
+            'tenant_id' => $user->tenant_id,
             'status' => Order::STATUS_OPEN,
         ]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+        $response = $this->withHeaders(authHeaders($user))
             ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'accepted',
             ]);
 
-        $response->assertStatus(200);
-    }
+        $response->assertOk();
+    });
 
-    public function test_rejected_transition_does_not_publish_event(): void
-    {
+    it('does not publish kafka event on rejected transition', function () {
+        $user = createAdminUser();
+
         $mock = Mockery::mock(KafkaProducer::class);
         $mock->shouldNotReceive('publish');
 
         $this->app->instance(KafkaProducer::class, $mock);
 
         $order = Order::factory()->create([
-            'tenant_id' => $this->tenant->id,
-            'status' => Order::STATUS_DELIVERED, // terminal state
+            'tenant_id' => $user->tenant_id,
+            'status' => Order::STATUS_DELIVERED,
         ]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->token}")
+        $response = $this->withHeaders(authHeaders($user))
             ->putJson("/api/v1/orders/{$order->id}", [
                 'status' => 'open',
             ]);
 
-        $response->assertStatus(422);
-    }
-}
+        $response->assertUnprocessable();
+    });
+});
 ```
 
 ### Rodar os testes

@@ -1,9 +1,16 @@
 <?php
 
+use App\Kafka\Producers\KafkaProducer;
 use App\Models\Order;
 use App\Models\Product;
 
 describe('Orders API', function () {
+    beforeEach(function () {
+        $mock = Mockery::mock(KafkaProducer::class);
+        $mock->shouldReceive('publish');
+        $this->app->instance(KafkaProducer::class, $mock);
+    });
+
     it('can list orders', function () {
         $user = createAdminUser();
 
