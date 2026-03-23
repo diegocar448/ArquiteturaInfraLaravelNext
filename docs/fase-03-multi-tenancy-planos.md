@@ -3152,7 +3152,7 @@ const menuItems = [
 ];
 ```
 
-Adicione `/plans` nas rotas protegidas do middleware `frontend/src/middleware.ts`:
+Adicione `/plans` nas rotas protegidas do proxy `frontend/src/proxy.ts`:
 
 ```typescript
 export const config = {
@@ -3187,7 +3187,7 @@ Crie `frontend/src/components/plans/plan-form-dialog.tsx`:
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createPlan, updatePlan } from "@/services/plan-service";
 import type { Plan } from "@/types/plan";
@@ -3232,7 +3232,7 @@ export function PlanFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<PlanFormData>({
-    resolver: zodResolver(planSchema),
+    resolver: standardSchemaResolver(planSchema),
     defaultValues: {
       name: plan?.name || "",
       price: plan ? Number(plan.price) : 0,
@@ -3818,7 +3818,7 @@ frontend/
 │   ├── types/
 │   │   └── plan.ts
 │   ├── components/app-sidebar.tsx (modificado - item Planos)
-│   └── middleware.ts (modificado - rota /plans)
+│   └── proxy.ts (modificado - rota /plans)
 ```
 
 **Conceitos aprendidos:**

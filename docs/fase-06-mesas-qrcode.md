@@ -1180,7 +1180,7 @@ mkdir -p frontend/src/components/tables
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createTable, updateTable } from "@/services/table-service";
 import type { Table } from "@/types/catalog";
@@ -1225,7 +1225,7 @@ export function TableFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<TableFormData>({
-    resolver: zodResolver(tableSchema),
+    resolver: standardSchemaResolver(tableSchema),
     defaultValues: {
       identify: table?.identify || "",
       description: table?.description || "",

@@ -1,4 +1,4 @@
-# Fase 2 - Bootstrap Laravel 12 + Next.js 15 com shadcn/ui
+# Fase 2 - Bootstrap Laravel 12 + Next.js 16 com shadcn/ui
 
 > **Objetivo:** Instalar o Laravel real, configurar JWT auth, e montar o frontend com shadcn/ui.
 > Ao final desta fase, teremos login funcional e dashboard admin com sidebar.
@@ -872,7 +872,7 @@ exit
 | Tailwind | Nativo | Nao | Nao |
 | Server Components | Sim | Parcial | Nao |
 
-shadcn/ui e ideal para Next.js 15 porque funciona perfeitamente com Server Components e Tailwind CSS.
+shadcn/ui e ideal para Next.js 16 porque funciona perfeitamente com Server Components e Tailwind CSS.
 
 ---
 
@@ -1125,7 +1125,7 @@ Crie `frontend/src/app/login/page.tsx`:
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { useAuthStore } from "@/stores/auth-store";
 import { ApiError } from "@/lib/api";
@@ -1157,7 +1157,7 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    resolver: standardSchemaResolver(loginSchema),
   });
 
   const onSubmit = async (data: LoginForm) => {
@@ -1230,7 +1230,7 @@ export default function LoginPage() {
 }
 ```
 
-**Conceito - `"use client"` no Next.js 15:**
+**Conceito - `"use client"` no Next.js 16:**
 Por padrao, componentes no App Router sao Server Components (renderizados no servidor). Quando precisamos de interatividade (useState, useEffect, event handlers), marcamos com `"use client"`. A pagina de login precisa de client-side porque tem formulario com estado.
 
 ---
@@ -1422,20 +1422,22 @@ export function AppHeader() {
 }
 ```
 
-**Conceito - Route Groups no Next.js 15:**
+**Conceito - Route Groups no Next.js 16:**
 Pastas com parenteses `(admin)` agrupam rotas que compartilham layout SEM afetar a URL. A URL fica `/dashboard`, nao `/(admin)/dashboard`. Isso permite ter layouts diferentes para admin vs public.
 
 ---
 
-## Passo 2.15 - Middleware de autenticacao (Next.js)
+## Passo 2.15 - Proxy de autenticacao (Next.js)
 
-Crie `frontend/src/middleware.ts`:
+> **Next.js 16:** O arquivo `middleware.ts` foi renomeado para `proxy.ts` e a funcao exportada de `middleware` para `proxy`. Isso reflete a mudanca do Next.js 16 que renomeou o conceito de "middleware" para "proxy" para clarificar seu proposito como boundary de rede.
+
+Crie `frontend/src/proxy.ts`:
 
 ```typescript
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
@@ -1577,7 +1579,7 @@ frontend/
 │   │   └── utils.ts (gerado pelo shadcn)
 │   ├── stores/
 │   │   └── auth-store.ts
-│   └── middleware.ts
+│   └── proxy.ts
 ```
 
 **Conceitos aprendidos:**

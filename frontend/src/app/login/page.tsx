@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useAuthStore } from "@/stores/auth-store";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -18,30 +15,36 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const loginSchema = z.object({
-  email: z.string().email("Informe um email valido"),
-  password: z.string().min(6, "A senha deve ter no minimo 6 caracteres"),
-});
-
-type LoginForm = z.infer<typeof loginSchema>;
-
 export default function LoginPage() {
   const router = useRouter();
   const { login, isLoading } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  const onSubmit = async (data: LoginForm) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError(null);
+    setFieldErrors({});
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    // Validation
+    const errors: { email?: string; password?: string } = {};
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Informe um email valido";
+    }
+    if (!password || password.length < 6) {
+      errors.password = "A senha deve ter no minimo 6 caracteres";
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     try {
-      await login(data.email, data.password);
+      await login(email, password);
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -62,7 +65,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
@@ -73,12 +76,12 @@ export default function LoginPage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="admin@orderly.com"
-                {...register("email")}
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+              {fieldErrors.email && (
+                <p className="text-sm text-destructive">{fieldErrors.email}</p>
               )}
             </div>
 
@@ -86,13 +89,13 @@ export default function LoginPage() {
               <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
-                {...register("password")}
               />
-              {errors.password && (
+              {fieldErrors.password && (
                 <p className="text-sm text-destructive">
-                  {errors.password.message}
+                  {fieldErrors.password}
                 </p>
               )}
             </div>

@@ -79,7 +79,7 @@ laravelnextts/
 ├── docs/                  # Documentacao
 │   ├── api/
 │   └── architecture/
-├── frontend/              # Next.js 15
+├── frontend/              # Next.js 16
 │   ├── public/
 │   └── src/app/
 ├── k8s/                   # Kubernetes manifests
@@ -694,7 +694,7 @@ Crie o arquivo `docker/node/Dockerfile`:
 FROM node:22-alpine AS base
 
 LABEL maintainer="Diego <cardoso.benko@gmail.com>"
-LABEL description="Orderly Frontend - Next.js 15"
+LABEL description="Orderly Frontend - Next.js 16"
 
 # Instalar libc6-compat necessario para algumas deps nativas
 RUN apk add --no-cache libc6-compat curl
@@ -1109,13 +1109,13 @@ cat > frontend/package.json << 'PKGEOF'
     "dev": "next dev --turbopack --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest",
     "test:e2e": "playwright test",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "^15.2.0",
+    "next": "^16.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -1125,7 +1125,7 @@ cat > frontend/package.json << 'PKGEOF'
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.7.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.2.0",
+    "eslint-config-next": "^16.2.1",
     "tailwindcss": "^4.0.0",
     "@tailwindcss/postcss": "^4.0.0"
   }
@@ -1252,7 +1252,7 @@ export default function Home() {
           color: "#666",
         }}
       >
-        <p>Stack: Next.js 15 + Laravel 12 + PostgreSQL + Redis + Kafka</p>
+        <p>Stack: Next.js 16 + Laravel 12 + PostgreSQL + Redis + Kafka</p>
         <p style={{ marginTop: "0.5rem" }}>
           Ambiente Docker funcionando com sucesso!
         </p>
@@ -1368,7 +1368,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # FRONTEND - Next.js 15
+  # FRONTEND - Next.js 16
   # ==========================================
   # Frontend React com SSR, roda via next dev com Turbopack
   # Em dev: hot-reload automatico (Fast Refresh)
@@ -2091,7 +2091,7 @@ laravelnextts/
 - Kafka KRaft mode (sem ZooKeeper)
 - Makefile para automacao de comandos
 
-**Proximo:** Fase 2 - Bootstrap Laravel 12 + Next.js 15 com shadcn/ui
+**Proximo:** Fase 2 - Bootstrap Laravel 12 + Next.js 16 com shadcn/ui
 
 ---
 

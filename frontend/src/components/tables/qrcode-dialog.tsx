@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getTableQrCode } from "@/services/table-service";
 import type { Table, TableQrCode } from "@/types/catalog";
 import {
@@ -20,20 +20,25 @@ interface QrCodeDialogProps {
 
 export function QrCodeDialog({ table, onOpenChange }: QrCodeDialogProps) {
   const [data, setData] = useState<TableQrCode | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [tableId, setTableId] = useState<number | null>(null);
+  const loading = !!table && !data;
+
+  const fetchQrCode = useCallback((id: number) => {
+    getTableQrCode(id)
+      .then((res) => setData(res.data))
+      .catch((err) => console.error("Erro ao carregar QR Code:", err));
+  }, []);
+
+  // Reset data when table changes
+  if (table?.id !== tableId) {
+    setTableId(table?.id ?? null);
+    setData(null);
+  }
 
   useEffect(() => {
-    if (!table) {
-      setData(null);
-      return;
-    }
-
-    setLoading(true);
-    getTableQrCode(table.id)
-      .then((res) => setData(res.data))
-      .catch((err) => console.error("Erro ao carregar QR Code:", err))
-      .finally(() => setLoading(false));
-  }, [table]);
+    if (!table) return;
+    fetchQrCode(table.id);
+  }, [table, fetchQrCode]);
 
   const handleDownload = () => {
     if (!data) return;

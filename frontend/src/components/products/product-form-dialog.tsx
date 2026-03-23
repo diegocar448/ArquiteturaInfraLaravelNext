@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createProduct, updateProduct } from "@/services/product-service";
 import type { Product } from "@/types/catalog";
@@ -49,7 +49,7 @@ export function ProductFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: standardSchemaResolver(productSchema),
     defaultValues: {
       title: product?.title || "",
       price: product ? Number(product.price) : 0,
