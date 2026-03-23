@@ -43,7 +43,9 @@
       "Bash(curl -s \"http://localhost/_next/static/chunks/node_modules_0tmr..5._.js\")",
       "Bash(grep -oP '.{0,20}\\(getDotPath|standard-schema\\).{0,40}')",
       "WebFetch(domain:laravel-news.com)",
-      "WebFetch(domain:endoflife.date)"
+      "WebFetch(domain:endoflife.date)",
+      "Bash(git config:*)",
+      "Read(//home/diegocar448/.ssh/**)"
     ]
   }
 }
