@@ -45,7 +45,10 @@
       "WebFetch(domain:laravel-news.com)",
       "WebFetch(domain:endoflife.date)",
       "Bash(git config:*)",
-      "Read(//home/diegocar448/.ssh/**)"
+      "Read(//home/diegocar448/.ssh/**)",
+      "Bash(git checkout:*)",
+      "Bash(gh auth:*)",
+      "Bash(echo \"$GITHUB_TOKEN\")"
     ]
   }
 }
