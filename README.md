@@ -1,6 +1,6 @@
-![CI](https://github.com/diegocar448/laravelnextts/actions/workflows/ci.yml/badge.svg)
-![E2E](https://github.com/diegocar448/laravelnextts/actions/workflows/e2e.yml/badge.svg)
-![CD](https://github.com/diegocar448/laravelnextts/actions/workflows/cd.yml/badge.svg)
+[![CI](https://github.com/diegocar448/ArquiteturaInfraLaravelNext/actions/workflows/ci.yml/badge.svg)](https://github.com/diegocar448/ArquiteturaInfraLaravelNext/actions/workflows/ci.yml)
+[![E2E](https://github.com/diegocar448/ArquiteturaInfraLaravelNext/actions/workflows/e2e.yml/badge.svg)](https://github.com/diegocar448/ArquiteturaInfraLaravelNext/actions/workflows/e2e.yml)
+[![CD](https://github.com/diegocar448/ArquiteturaInfraLaravelNext/actions/workflows/cd.yml/badge.svg)](https://github.com/diegocar448/ArquiteturaInfraLaravelNext/actions/workflows/cd.yml)
 
 # Orderly - Tutorial de Construcao Passo a Passo
 
