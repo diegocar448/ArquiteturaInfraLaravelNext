@@ -20,7 +20,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 
 | Camada | Tecnologia | Versao |
 |---|---|---|
-| Backend | Laravel (API-only) | 12.x |
+| Backend | Laravel (API-only) | 13.x |
 | Frontend | Next.js + TypeScript | 16.x |
 | UI | shadcn/ui + Tailwind CSS | latest |
 | Banco | PostgreSQL | 16 |
