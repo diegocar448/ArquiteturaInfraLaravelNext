@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Plan;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,15 +35,15 @@ expect()->extend('toBeValidUuid', function () {
  * Cria um usuario super-admin com tenant para testes.
  * Super-admin bypassa todas as verificacoes de permissao.
  */
-function createAdminUser(): \App\Models\User
+function createAdminUser(): User
 {
-    $plan = \App\Models\Plan::factory()->create();
+    $plan = Plan::factory()->create();
 
-    $tenant = \App\Models\Tenant::factory()->create([
+    $tenant = Tenant::factory()->create([
         'plan_id' => $plan->id,
     ]);
 
-    return \App\Models\User::factory()->create([
+    return User::factory()->create([
         'tenant_id' => $tenant->id,
         'email' => 'admin@orderly.com', // super-admin email
     ]);
@@ -49,7 +52,7 @@ function createAdminUser(): \App\Models\User
 /**
  * Retorna headers de autenticacao JWT para um usuario.
  */
-function authHeaders(\App\Models\User $user): array
+function authHeaders(User $user): array
 {
     $token = auth('api')->login($user);
 

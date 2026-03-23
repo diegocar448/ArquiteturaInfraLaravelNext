@@ -5,7 +5,6 @@ use App\Kafka\Events\OrderStatusChangedEvent;
 use App\Kafka\Producers\KafkaProducer;
 use App\Models\Order;
 use App\Models\Product;
-use Mockery;
 
 describe('Order Kafka Events', function () {
     it('publishes kafka event when creating order', function () {

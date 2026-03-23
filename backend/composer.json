@@ -1,14 +1,14 @@
 {
     "name": "orderly/backend",
     "type": "project",
-    "description": "Orderly Backend API - Laravel 12",
+    "description": "Orderly Backend API - Laravel 13",
     "keywords": ["laravel", "api", "saas", "multi-tenant"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
         "chillerlan/php-qrcode": "^5.0",
-        "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10",
+        "laravel/framework": "^13.0",
+        "laravel/tinker": "^3.0",
         "mateusjunges/laravel-kafka": "^2.4",
         "promphp/prometheus_client_php": "^2.14",
         "tymon/jwt-auth": "^2.1"
@@ -20,10 +20,10 @@
         "laravel/sail": "^1.38",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "pestphp/pest": "^3.7",
-        "pestphp/pest-plugin-laravel": "^3.1",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0",
         "phpstan/phpstan": "^2.1",
-        "dedoc/scramble": "^0.12"
+        "dedoc/scramble": "^0.13"
     },
     "autoload": {
         "psr-4": {

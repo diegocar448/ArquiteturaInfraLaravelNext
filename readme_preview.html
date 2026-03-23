@@ -25,7 +25,7 @@ strong { color: #e6edf3; }
 <img alt="CD" src="https://github.com/diegocar448/laravelnextts/actions/workflows/cd.yml/badge.svg" /></p>
 <h1 id="orderly-tutorial-de-construcao-passo-a-passo">Orderly - Tutorial de Construcao Passo a Passo</h1>
 <blockquote>
-<p>Construindo uma plataforma SaaS multi-tenant de delivery com <strong>Laravel 12</strong> + <strong>Next.js 15</strong> + <strong>Docker</strong> do zero, como um arquiteto senior faria.</p>
+<p>Construindo uma plataforma SaaS multi-tenant de delivery com <strong>Laravel 13</strong> + <strong>Next.js 15</strong> + <strong>Docker</strong> do zero, como um arquiteto senior faria.</p>
 </blockquote>
 <p><strong>Orderly</strong> — porque todo grande restaurante precisa de ordem. Nos pedidos, no cardapio, na operacao.</p>
 <p>Este README e um tutorial progressivo. Cada fase documenta exatamente o que foi feito, por que foi feito, e como reproduzir. Apague tudo e reconstrua seguindo cada passo.</p>
@@ -49,7 +49,7 @@ strong { color: #e6edf3; }
 <li><a href="#passo-114---docker-compose-producao">Passo 1.14 - Docker Compose (producao)</a></li>
 <li><a href="#passo-115---makefile-automacao">Passo 1.15 - Makefile (automacao)</a></li>
 <li><a href="#passo-116---subindo-o-ambiente">Passo 1.16 - Subindo o ambiente</a></li>
-<li><a href="#fase-2---bootstrap-laravel-12--nextjs-15-com-shadcnui">Fase 2 - Bootstrap Laravel 12 + Next.js 15 com shadcn/ui</a></li>
+<li><a href="#fase-2---bootstrap-laravel-12--nextjs-15-com-shadcnui">Fase 2 - Bootstrap Laravel 13 + Next.js 15 com shadcn/ui</a></li>
 <li><a href="#passo-21---instalar-laravel-skeleton">Passo 2.1 - Instalar Laravel skeleton</a></li>
 <li><a href="#passo-22---testar-conexao-com-postgresql-e-redis">Passo 2.2 - Testar conexao com PostgreSQL e Redis</a></li>
 <li><a href="#passo-23---configurar-cors-e-rotas-api">Passo 2.3 - Configurar CORS e rotas API</a></li>
@@ -385,7 +385,7 @@ Porque definimos a estrutura macro do projeto desde o inicio. Isso comunica para
 <p><strong>Estrutura resultante:</strong></p>
 <pre><code>laravelnextts/
 ├── .github/workflows/     # CI/CD pipelines
-├── backend/               # Laravel 12 API
+├── backend/               # Laravel 13 API
 │   └── public/
 ├── docker/                # Configuracoes Docker
 │   ├── nginx/
@@ -628,7 +628,7 @@ FROM php:8.3-fpm-alpine AS base
 
 # Metadata seguindo OCI Image Spec
 LABEL maintainer=&quot;Diego &lt;cardoso.benko@gmail.com&gt;&quot;
-LABEL description=&quot;Orderly Backend - Laravel 12 API&quot;
+LABEL description=&quot;Orderly Backend - Laravel 13 API&quot;
 
 # Variaveis de build reutilizaveis
 ARG PHP_MEMORY_LIMIT=256M
@@ -1226,7 +1226,7 @@ Para WebSocket funcionar atraves do proxy. Sem isso, hot-reload do Next.js em de
 {
     &quot;name&quot;: &quot;orderly/backend&quot;,
     &quot;type&quot;: &quot;project&quot;,
-    &quot;description&quot;: &quot;Orderly Backend API - Laravel 12&quot;,
+    &quot;description&quot;: &quot;Orderly Backend API - Laravel 13&quot;,
     &quot;keywords&quot;: [&quot;laravel&quot;, &quot;api&quot;, &quot;saas&quot;, &quot;multi-tenant&quot;],
     &quot;license&quot;: &quot;MIT&quot;,
     &quot;require&quot;: {
@@ -1458,7 +1458,7 @@ export default function Home() {
           color: &quot;#666&quot;,
         }}
       &gt;
-        &lt;p&gt;Stack: Next.js 15 + Laravel 12 + PostgreSQL + Redis + Kafka&lt;/p&gt;
+        &lt;p&gt;Stack: Next.js 15 + Laravel 13 + PostgreSQL + Redis + Kafka&lt;/p&gt;
         &lt;p style={{ marginTop: &quot;0.5rem&quot; }}&gt;
           Ambiente Docker funcionando com sucesso!
         &lt;/p&gt;
@@ -1516,7 +1516,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # BACKEND - Laravel 12 (PHP-FPM)
+  # BACKEND - Laravel 13 (PHP-FPM)
   # ==========================================
   # API REST em Laravel, roda via PHP-FPM
   # Em dev: codigo montado via volume (hot-reload ao salvar)
@@ -2276,9 +2276,9 @@ Verifique se as variaveis WATCHPACK_POLLING e CHOKIDAR_USEPOLLING estao "true" n
 - Volumes nomeados vs bind mounts vs anonimos
 - Kafka KRaft mode (sem ZooKeeper)
 - Makefile para automacao de comandos</p>
-<p><strong>Proximo:</strong> Fase 2 - Bootstrap Laravel 12 + Next.js 15 com shadcn/ui</p>
+<p><strong>Proximo:</strong> Fase 2 - Bootstrap Laravel 13 + Next.js 15 com shadcn/ui</p>
 <hr />
-<h1 id="fase-2-bootstrap-laravel-12-nextjs-15-com-shadcnui">Fase 2 - Bootstrap Laravel 12 + Next.js 15 com shadcn/ui</h1>
+<h1 id="fase-2-bootstrap-laravel-12-nextjs-15-com-shadcnui">Fase 2 - Bootstrap Laravel 13 + Next.js 15 com shadcn/ui</h1>
 <blockquote>
 <p><strong>Objetivo:</strong> Instalar o Laravel real, configurar JWT auth, e montar o frontend com shadcn/ui.
 Ao final desta fase, teremos login funcional e dashboard admin com sidebar.</p>
@@ -2333,7 +2333,7 @@ chmod -R 777 storage bootstrap/cache
 exit
 </code></pre>
 <p><strong>O que aconteceu:</strong>
-- O <code>composer create-project</code> baixou a versao mais recente do Laravel 12
+- O <code>composer create-project</code> baixou a versao mais recente do Laravel 13
 - Copiamos toda a estrutura (models, config, routes, migrations, etc.)
 - O <code>composer install</code> usou NOSSO <code>composer.json</code> que ja inclui <code>tymon/jwt-auth</code>, <code>laravel-kafka</code>, <code>pestphp/pest</code>, etc.
 - O <code>key:generate</code> criou o <code>APP_KEY</code> no <code>.env</code></p>
@@ -2376,7 +2376,7 @@ Running migrations...
 <hr />
 <h2 id="passo-23-configurar-cors-e-rotas-api">Passo 2.3 - Configurar CORS e rotas API</h2>
 <p>O CORS (Cross-Origin Resource Sharing) permite que o frontend (<code>localhost:3000</code>) faca requests para o backend (<code>localhost/api</code>).</p>
-<p>No Laravel 12, nao existe mais <code>config/cors.php</code>. O CORS e as rotas API sao configurados no <code>bootstrap/app.php</code>.</p>
+<p>No Laravel 13, nao existe mais <code>config/cors.php</code>. O CORS e as rotas API sao configurados no <code>bootstrap/app.php</code>.</p>
 <p>Primeiro, crie o arquivo de rotas API. Crie <code>backend/routes/api.php</code>:</p>
 <pre><code class="language-php">&lt;?php
 
@@ -2411,7 +2411,7 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })-&gt;create();
 </code></pre>
-<p><strong>O que mudou no Laravel 12?</strong>
+<p><strong>O que mudou no Laravel 13?</strong>
 - Sem <code>config/cors.php</code> — o middleware <code>HandleCors</code> e adicionado automaticamente
 - Sem <code>routes/api.php</code> por padrao — precisa criar e registrar no <code>bootstrap/app.php</code>
 - A linha <code>api: __DIR__.'/../routes/api.php'</code> registra as rotas com prefixo <code>/api</code>
@@ -3872,7 +3872,7 @@ class PlanObserver
 <p><strong>Como funciona o Observer:</strong>
 - <code>creating</code> — dispara <strong>antes</strong> de inserir no banco. Se <code>url</code> estiver vazio, gera o slug a partir do <code>name</code>.
 - <code>updating</code> — dispara <strong>antes</strong> de atualizar. Se o <code>name</code> mudou mas o <code>url</code> nao foi alterado manualmente, regenera o slug.
-- <code>#[ObservedBy]</code> — attribute do PHP 8.1+ que registra o Observer sem precisar de <code>AppServiceProvider</code>. Laravel 12 suporta nativamente.
+- <code>#[ObservedBy]</code> — attribute do PHP 8.1+ que registra o Observer sem precisar de <code>AppServiceProvider</code>. Laravel 13 suporta nativamente.
 - <code>isDirty('name')</code> — verifica se o campo <code>name</code> foi modificado no update.</p>
 <p>Crie a Factory <code>backend/database/factories/PlanFactory.php</code>:</p>
 <pre><code class="language-php">&lt;?php
@@ -9423,7 +9423,7 @@ Route::prefix('v1')-&gt;group(function () {
 });
 </code></pre>
 <blockquote>
-<p><strong>Nota sobre <code>middleware()</code> em <code>apiResource</code>:</strong> O Laravel 12 aceita um array associativo onde a chave e o nome do metodo do controller (<code>index</code>, <code>show</code>, <code>store</code>, <code>update</code>, <code>destroy</code>) e o valor e o middleware a aplicar. Isso permite permissoes granulares por acao.</p>
+<p><strong>Nota sobre <code>middleware()</code> em <code>apiResource</code>:</strong> O Laravel 13 aceita um array associativo onde a chave e o nome do metodo do controller (<code>index</code>, <code>show</code>, <code>store</code>, <code>update</code>, <code>destroy</code>) e o valor e o middleware a aplicar. Isso permite permissoes granulares por acao.</p>
 </blockquote>
 <p><strong>Teste — Super-admin (deve funcionar):</strong></p>
 <pre><code class="language-bash">TOKEN=$(curl -s -X POST http://127.0.0.1/api/v1/auth/login \

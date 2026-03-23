@@ -1,4 +1,4 @@
-# Fase 2 - Bootstrap Laravel 12 + Next.js 16 com shadcn/ui
+# Fase 2 - Bootstrap Laravel 13 + Next.js 16 com shadcn/ui
 
 > **Objetivo:** Instalar o Laravel real, configurar JWT auth, e montar o frontend com shadcn/ui.
 > Ao final desta fase, teremos login funcional e dashboard admin com sidebar.
@@ -60,7 +60,7 @@ exit
 ```
 
 **O que aconteceu:**
-- O `composer create-project` baixou a versao mais recente do Laravel 12
+- O `composer create-project` baixou a versao mais recente do Laravel 13
 - Copiamos toda a estrutura (models, config, routes, migrations, etc.)
 - O `composer install` usou NOSSO `composer.json` que ja inclui `tymon/jwt-auth`, `laravel-kafka`, `pestphp/pest`, etc.
 - O `key:generate` criou o `APP_KEY` no `.env`
@@ -120,7 +120,7 @@ docker compose exec backend php artisan tinker
 
 O CORS (Cross-Origin Resource Sharing) permite que o frontend (`localhost:3000`) faca requests para o backend (`localhost/api`).
 
-No Laravel 12, nao existe mais `config/cors.php`. O CORS e as rotas API sao configurados no `bootstrap/app.php`.
+No Laravel 13, nao existe mais `config/cors.php`. O CORS e as rotas API sao configurados no `bootstrap/app.php`.
 
 Primeiro, crie o arquivo de rotas API. Crie `backend/routes/api.php`:
 
@@ -162,7 +162,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })->create();
 ```
 
-**O que mudou no Laravel 12?**
+**O que mudou no Laravel 13?**
 - Sem `config/cors.php` — o middleware `HandleCors` e adicionado automaticamente
 - Sem `routes/api.php` por padrao — precisa criar e registrar no `bootstrap/app.php`
 - A linha `api: __DIR__.'/../routes/api.php'` registra as rotas com prefixo `/api`

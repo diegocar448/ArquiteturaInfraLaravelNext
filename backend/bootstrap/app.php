@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Middleware\CheckPermission;
+use App\Http\Middleware\ForceJsonResponse;
+use App\Http\Middleware\IdentifyTenant;
+use App\Http\Middleware\PrometheusMiddleware;
+use App\Http\Middleware\RequestIdMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,15 +19,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\IdentifyTenant::class,
-            'permission' => \App\Http\Middleware\CheckPermission::class,
+            'tenant' => IdentifyTenant::class,
+            'permission' => CheckPermission::class,
         ]);
         $middleware->api(prepend: [
-            \App\Http\Middleware\ForceJsonResponse::class,
-            \App\Http\Middleware\RequestIdMiddleware::class,
+            ForceJsonResponse::class,
+            RequestIdMiddleware::class,
         ]);
         $middleware->api(append: [
-            \App\Http\Middleware\PrometheusMiddleware::class,
+            PrometheusMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

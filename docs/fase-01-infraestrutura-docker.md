@@ -70,7 +70,7 @@ Porque definimos a estrutura macro do projeto desde o inicio. Isso comunica para
 ```
 laravelnextts/
 ├── .github/workflows/     # CI/CD pipelines
-├── backend/               # Laravel 12 API
+├── backend/               # Laravel 13 API
 │   └── public/
 ├── docker/                # Configuracoes Docker
 │   ├── nginx/
@@ -342,7 +342,7 @@ FROM php:8.3-fpm-alpine AS base
 
 # Metadata seguindo OCI Image Spec
 LABEL maintainer="Diego <cardoso.benko@gmail.com>"
-LABEL description="Orderly Backend - Laravel 12 API"
+LABEL description="Orderly Backend - Laravel 13 API"
 
 # Variaveis de build reutilizaveis
 ARG PHP_MEMORY_LIMIT=256M
@@ -993,13 +993,13 @@ cat > backend/composer.json << 'COMPOSEREOF'
 {
     "name": "orderly/backend",
     "type": "project",
-    "description": "Orderly Backend API - Laravel 12",
+    "description": "Orderly Backend API - Laravel 13",
     "keywords": ["laravel", "api", "saas", "multi-tenant"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10",
+        "laravel/framework": "^13.0",
+        "laravel/tinker": "^3.0",
         "tymon/jwt-auth": "^2.1",
         "mateusjunges/laravel-kafka": "^2.4"
     },
@@ -1010,10 +1010,10 @@ cat > backend/composer.json << 'COMPOSEREOF'
         "laravel/sail": "^1.38",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
-        "pestphp/pest": "^3.7",
-        "pestphp/pest-plugin-laravel": "^3.1",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0",
         "phpstan/phpstan": "^2.1",
-        "dedoc/scramble": "^0.12"
+        "dedoc/scramble": "^0.13"
     },
     "autoload": {
         "psr-4": {
@@ -1252,7 +1252,7 @@ export default function Home() {
           color: "#666",
         }}
       >
-        <p>Stack: Next.js 16 + Laravel 12 + PostgreSQL + Redis + Kafka</p>
+        <p>Stack: Next.js 16 + Laravel 13 + PostgreSQL + Redis + Kafka</p>
         <p style={{ marginTop: "0.5rem" }}>
           Ambiente Docker funcionando com sucesso!
         </p>
@@ -1316,7 +1316,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # BACKEND - Laravel 12 (PHP-FPM)
+  # BACKEND - Laravel 13 (PHP-FPM)
   # ==========================================
   # API REST em Laravel, roda via PHP-FPM
   # Em dev: codigo montado via volume (hot-reload ao salvar)
@@ -2091,7 +2091,7 @@ laravelnextts/
 - Kafka KRaft mode (sem ZooKeeper)
 - Makefile para automacao de comandos
 
-**Proximo:** Fase 2 - Bootstrap Laravel 12 + Next.js 16 com shadcn/ui
+**Proximo:** Fase 2 - Bootstrap Laravel 13 + Next.js 16 com shadcn/ui
 
 ---
 

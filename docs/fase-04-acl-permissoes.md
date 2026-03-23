@@ -2533,7 +2533,7 @@ Route::prefix('v1')->group(function () {
 });
 ```
 
-> **Nota sobre `middleware()` em `apiResource`:** O Laravel 12 aceita um array associativo onde a chave e o nome do metodo do controller (`index`, `show`, `store`, `update`, `destroy`) e o valor e o middleware a aplicar. Isso permite permissoes granulares por acao.
+> **Nota sobre `middleware()` em `apiResource`:** O Laravel 13 aceita um array associativo onde a chave e o nome do metodo do controller (`index`, `show`, `store`, `update`, `destroy`) e o valor e o middleware a aplicar. Isso permite permissoes granulares por acao.
 
 **Teste — Super-admin (deve funcionar):**
 

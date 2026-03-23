@@ -7,7 +7,7 @@ FROM php:8.3-fpm-alpine AS base
 
 # Metadata seguindo OCI Image Spec
 LABEL maintainer="Diego <cardoso.benko@gmail.com>"
-LABEL description="Orderly Backend - Laravel 12 API"
+LABEL description="Orderly Backend - Laravel 13 API"
 
 # Variaveis de build reutilizaveis
 ARG PHP_MEMORY_LIMIT=256M
