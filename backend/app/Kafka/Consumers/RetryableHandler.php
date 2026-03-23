@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
 use Junges\Kafka\Contracts\Handler;
 use Junges\Kafka\Contracts\MessageConsumer;
+use Junges\Kafka\Facades\Kafka;
 
 class RetryableHandler implements Handler
 {
@@ -55,7 +56,7 @@ class RetryableHandler implements Handler
         $dlqTopic = $topic.'.dlq';
 
         try {
-            \Junges\Kafka\Facades\Kafka::publish()
+            Kafka::publish()
                 ->onTopic($dlqTopic)
                 ->withBodyKey('original_message', $message->getBody())
                 ->withHeaders(array_merge($message->getHeaders(), [

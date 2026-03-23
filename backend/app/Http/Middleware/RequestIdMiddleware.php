@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -17,7 +18,7 @@ class RequestIdMiddleware
         app()->instance('request_id', $requestId);
 
         // Adicionar ao contexto de log
-        \Illuminate\Support\Facades\Log::shareContext([
+        Log::shareContext([
             'request_id' => $requestId,
             'method' => $request->method(),
             'uri' => $request->getRequestUri(),

@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\V1\ClientEvaluationController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DetailPlanController;
 use App\Http\Controllers\Api\V1\EvaluationController;
+use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\MetricsController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -20,11 +22,11 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // Metricas Prometheus (sem autenticacao — acesso interno apenas)
-    Route::get('/metrics', \App\Http\Controllers\Api\V1\MetricsController::class);
+    Route::get('/metrics', MetricsController::class);
 
     // Health checks (sem autenticacao)
-    Route::get('/health/live', [\App\Http\Controllers\Api\V1\HealthController::class, 'liveness']);
-    Route::get('/health/ready', [\App\Http\Controllers\Api\V1\HealthController::class, 'readiness']);
+    Route::get('/health/live', [HealthController::class, 'liveness']);
+    Route::get('/health/ready', [HealthController::class, 'readiness']);
 
     // --- Rotas publicas de clientes ---
     Route::prefix('client/auth')->group(function () {

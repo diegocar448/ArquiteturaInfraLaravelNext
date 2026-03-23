@@ -2,6 +2,8 @@
 
 namespace App\Traits;
 
+use App\Models\Permission;
+
 trait HasPermission
 {
     /**
@@ -76,11 +78,11 @@ trait HasPermission
     public function effectivePermissions(): array
     {
         if ($this->isSuperAdmin()) {
-            return \App\Models\Permission::pluck('name')->toArray();
+            return Permission::pluck('name')->toArray();
         }
 
         // Permissoes do usuario via roles
-        $rolePermissions = \App\Models\Permission::whereHas('roles', function ($query) {
+        $rolePermissions = Permission::whereHas('roles', function ($query) {
             $query->whereIn('roles.id', $this->roles()->pluck('roles.id'));
         })->pluck('name')->toArray();
 
@@ -95,7 +97,7 @@ trait HasPermission
             return [];
         }
 
-        $planPermissions = \App\Models\Permission::whereHas('profiles', function ($query) use ($tenant) {
+        $planPermissions = Permission::whereHas('profiles', function ($query) use ($tenant) {
             $query->whereIn('profiles.id', $tenant->plan->profiles()->pluck('profiles.id'));
         })->pluck('name')->toArray();
 

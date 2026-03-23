@@ -4,7 +4,7 @@
 
 # Orderly - Tutorial de Construcao Passo a Passo
 
-> Construindo uma plataforma SaaS multi-tenant de delivery com **Laravel 12** + **Next.js 16** + **Docker** do zero, como um arquiteto senior faria.
+> Construindo uma plataforma SaaS multi-tenant de delivery com **Laravel 13** + **Next.js 16** + **Docker** do zero, como um arquiteto senior faria.
 
 **Orderly** — porque todo grande restaurante precisa de ordem. Nos pedidos, no cardapio, na operacao.
 

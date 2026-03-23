@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # BACKEND - Laravel 12 (PHP-FPM)
+  # BACKEND - Laravel 13 (PHP-FPM)
   # ==========================================
   # API REST em Laravel, roda via PHP-FPM
   # Em dev: codigo montado via volume (hot-reload ao salvar)

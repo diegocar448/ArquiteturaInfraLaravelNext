@@ -41,7 +41,9 @@
       "Bash(grep -oP '.{0,30}\\(WebSocket|EventSource|hmr|socket\\).{0,50}')",
       "Bash(grep -oP '.{0,20}\\(WebSocket|ws:|wss:|new.*Socket\\).{0,50}')",
       "Bash(curl -s \"http://localhost/_next/static/chunks/node_modules_0tmr..5._.js\")",
-      "Bash(grep -oP '.{0,20}\\(getDotPath|standard-schema\\).{0,40}')"
+      "Bash(grep -oP '.{0,20}\\(getDotPath|standard-schema\\).{0,40}')",
+      "WebFetch(domain:laravel-news.com)",
+      "WebFetch(domain:endoflife.date)"
     ]
   }
 }

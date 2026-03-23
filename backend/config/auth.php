@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Client;
+use App\Models\User;
+
 return [
     'defaults' => [
         'guard' => 'api',
@@ -24,11 +27,11 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', App\Models\User::class),
+            'model' => env('AUTH_MODEL', User::class),
         ],
         'clients' => [
             'driver' => 'eloquent',
-            'model' => App\Models\Client::class,
+            'model' => Client::class,
         ],
     ],
 

@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Response;
 use Prometheus\CollectorRegistry;
 use Prometheus\RenderTextFormat;
 
 class MetricsController extends Controller
 {
-    public function __invoke(CollectorRegistry $registry): \Illuminate\Http\Response
+    public function __invoke(CollectorRegistry $registry): Response
     {
         $renderer = new RenderTextFormat;
         $result = $renderer->render($registry->getMetricFamilySamples());

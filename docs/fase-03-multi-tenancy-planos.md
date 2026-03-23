@@ -155,7 +155,7 @@ class PlanObserver
 **Como funciona o Observer:**
 - `creating` — dispara **antes** de inserir no banco. Se `url` estiver vazio, gera o slug a partir do `name`.
 - `updating` — dispara **antes** de atualizar. Se o `name` mudou mas o `url` nao foi alterado manualmente, regenera o slug.
-- `#[ObservedBy]` — attribute do PHP 8.1+ que registra o Observer sem precisar de `AppServiceProvider`. Laravel 12 suporta nativamente.
+- `#[ObservedBy]` — attribute do PHP 8.1+ que registra o Observer sem precisar de `AppServiceProvider`. Laravel 13 suporta nativamente.
 - `isDirty('name')` — verifica se o campo `name` foi modificado no update.
 
 Crie a Factory `backend/database/factories/PlanFactory.php`:
