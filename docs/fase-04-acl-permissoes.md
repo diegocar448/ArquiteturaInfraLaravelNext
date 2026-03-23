@@ -3021,9 +3021,9 @@ export default function ProfileDetailPage() {
 }
 ```
 
-### Atualizar middleware e sidebar
+### Atualizar proxy e sidebar
 
-Edite `frontend/src/middleware.ts` — adicione `/profiles` e `/roles` nas rotas protegidas:
+Edite `frontend/src/proxy.ts` — adicione `/profiles` e `/roles` nas rotas protegidas:
 
 ```typescript
 const isProtectedRoute = pathname.startsWith("/dashboard") ||
@@ -3584,7 +3584,7 @@ frontend/
 │   │   └── acl-service.ts
 │   ├── types/
 │   │   └── acl.ts
-│   └── middleware.ts (modificado - rotas /profiles e /roles)
+│   └── proxy.ts (modificado - rotas /profiles e /roles)
 ```
 
 **Conceitos aprendidos:**

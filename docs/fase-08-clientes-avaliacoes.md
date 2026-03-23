@@ -1688,7 +1688,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { useClientAuthStore } from "@/stores/client-auth-store";
 import { ApiError } from "@/lib/api";
@@ -1721,7 +1721,7 @@ export default function ClientLoginPage() {
         handleSubmit,
         formState: { errors },
     } = useForm<LoginForm>({
-        resolver: zodResolver(loginSchema),
+        resolver: standardSchemaResolver(loginSchema),
     });
 
     const onSubmit = async (data: LoginForm) => {
@@ -1827,7 +1827,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { useClientAuthStore } from "@/stores/client-auth-store";
 import { ApiError } from "@/lib/api";
@@ -1869,7 +1869,7 @@ export default function ClientRegisterPage() {
         handleSubmit,
         formState: { errors },
     } = useForm<RegisterForm>({
-        resolver: zodResolver(registerSchema),
+        resolver: standardSchemaResolver(registerSchema),
     });
 
     const onSubmit = async (data: RegisterForm) => {
@@ -2009,15 +2009,17 @@ export default function ClientRegisterPage() {
 }
 ```
 
-### Middleware — proteger rotas do cliente
+### Proxy — proteger rotas do cliente
 
-Atualize `frontend/src/middleware.ts` para suportar as rotas de cliente com cookie separado:
+Atualize `frontend/src/proxy.ts` para suportar as rotas de cliente com cookie separado:
+
+> **Next.js 16:** O arquivo `middleware.ts` foi renomeado para `proxy.ts` e a funcao exportada de `middleware` para `proxy`.
 
 ```ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // --- Rotas de cliente ---
@@ -2283,7 +2285,7 @@ frontend/src/
 ├── stores/client-auth-store.ts
 ├── types/evaluation.ts
 ├── services/evaluation-service.ts
-├── middleware.ts (modificado — rotas /client/* + cookie client_token)
+├── proxy.ts (modificado — rotas /client/* + cookie client_token)
 ├── app/
 │   ├── (admin)/reviews/page.tsx
 │   └── client/
@@ -2302,7 +2304,7 @@ frontend/src/
 - **Unique composite constraint** — `[order_id, client_id]` impede avaliacoes duplicadas a nivel de banco
 - **Componente `StarRating`** — renderizacao condicional de icones SVG com classes Tailwind
 - **Stores separados (Zustand)** — `auth-storage` para admin e `client-auth-storage` para cliente, evitando conflito de tokens
-- **Cookies separados no middleware** — `token` (admin) e `client_token` (cliente) permitem sessoes independentes no Next.js middleware (server-side)
+- **Cookies separados no proxy** — `token` (admin) e `client_token` (cliente) permitem sessoes independentes no Next.js proxy (server-side)
 
 **Proximo:** Fase 9 - Dashboard com Metricas
 

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createCategory, updateCategory } from "@/services/category-service";
 import type { Category } from "@/types/catalog";
@@ -47,7 +47,7 @@ export function CategoryFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
+    resolver: standardSchemaResolver(categorySchema),
     defaultValues: {
       name: category?.name || "",
       description: category?.description || "",

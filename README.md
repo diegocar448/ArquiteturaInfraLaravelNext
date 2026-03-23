@@ -4,7 +4,7 @@
 
 # Orderly - Tutorial de Construcao Passo a Passo
 
-> Construindo uma plataforma SaaS multi-tenant de delivery com **Laravel 12** + **Next.js 15** + **Docker** do zero, como um arquiteto senior faria.
+> Construindo uma plataforma SaaS multi-tenant de delivery com **Laravel 12** + **Next.js 16** + **Docker** do zero, como um arquiteto senior faria.
 
 **Orderly** — porque todo grande restaurante precisa de ordem. Nos pedidos, no cardapio, na operacao.
 
@@ -21,7 +21,7 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 | Camada | Tecnologia | Versao |
 |---|---|---|
 | Backend | Laravel (API-only) | 12.x |
-| Frontend | Next.js + TypeScript | 15.x |
+| Frontend | Next.js + TypeScript | 16.x |
 | UI | shadcn/ui + Tailwind CSS | latest |
 | Banco | PostgreSQL | 16 |
 | Cache/Queue | Redis | 7 |

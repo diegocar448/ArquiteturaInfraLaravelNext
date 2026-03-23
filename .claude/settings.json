@@ -28,7 +28,20 @@
       "Bash(ls -la /home/diegocar448/projects/laravelnextts/docker/*/)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(make down:*)"
+      "Bash(make down:*)",
+      "WebSearch",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js)",
+      "Bash(curl -s \"http://localhost/_next/static/chunks/src_0c-v1h9._.js\")",
+      "Bash(grep -oP '.{0,30}handleSubmit.{0,30}')",
+      "Bash(curl -s \"http://localhost/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_0yjw1oe._.js\")",
+      "Bash(grep -oP '.{0,50}WebSocket.{0,80}')",
+      "Bash(curl -s \"http://localhost/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_10mygs7._.js\")",
+      "Bash(grep -oP '.{0,30}\\(WebSocket|Socket|EventSource|fetch\\).{0,50}')",
+      "Bash(curl -s \"http://localhost/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js\")",
+      "Bash(grep -oP '.{0,30}\\(WebSocket|EventSource|hmr|socket\\).{0,50}')",
+      "Bash(grep -oP '.{0,20}\\(WebSocket|ws:|wss:|new.*Socket\\).{0,50}')",
+      "Bash(curl -s \"http://localhost/_next/static/chunks/node_modules_0tmr..5._.js\")",
+      "Bash(grep -oP '.{0,20}\\(getDotPath|standard-schema\\).{0,40}')"
     ]
   }
 }

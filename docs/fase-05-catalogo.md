@@ -2606,7 +2606,7 @@ Crie o dialog de formulario `frontend/src/components/categories/category-form-di
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createCategory, updateCategory } from "@/services/category-service";
 import type { Category } from "@/types/catalog";
@@ -2651,7 +2651,7 @@ export function CategoryFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
+    resolver: standardSchemaResolver(categorySchema),
     defaultValues: {
       name: category?.name || "",
       description: category?.description || "",
@@ -3198,7 +3198,7 @@ Crie o dialog de formulario `frontend/src/components/products/product-form-dialo
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createProduct, updateProduct } from "@/services/product-service";
 import { getCategories } from "@/services/category-service";
@@ -3246,7 +3246,7 @@ export function ProductFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: standardSchemaResolver(productSchema),
     defaultValues: {
       title: product?.title || "",
       price: product ? Number(product.price) : 0,

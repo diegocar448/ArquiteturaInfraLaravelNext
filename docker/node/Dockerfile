@@ -5,7 +5,7 @@
 FROM node:22-alpine AS base
 
 LABEL maintainer="Diego <cardoso.benko@gmail.com>"
-LABEL description="Orderly Frontend - Next.js 15"
+LABEL description="Orderly Frontend - Next.js 16"
 
 # Instalar libc6-compat necessario para algumas deps nativas
 RUN apk add --no-cache libc6-compat curl

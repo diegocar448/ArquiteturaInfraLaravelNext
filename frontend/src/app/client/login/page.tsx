@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { useClientAuthStore } from "@/stores/client-auth-store";
 import { ApiError } from "@/lib/api";
@@ -37,7 +37,7 @@ export default function ClientLoginPage() {
         handleSubmit,
         formState: { errors },
     } = useForm<LoginForm>({
-        resolver: zodResolver(loginSchema),
+        resolver: standardSchemaResolver(loginSchema),
     });
 
     const onSubmit = async (data: LoginForm) => {

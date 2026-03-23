@@ -92,7 +92,7 @@ services:
     restart: unless-stopped
 
   # ==========================================
-  # FRONTEND - Next.js 15
+  # FRONTEND - Next.js 16
   # ==========================================
   # Frontend React com SSR, roda via next dev com Turbopack
   # Em dev: hot-reload automatico (Fast Refresh)

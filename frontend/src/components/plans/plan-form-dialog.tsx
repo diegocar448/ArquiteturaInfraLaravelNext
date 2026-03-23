@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { z } from "zod";
 import { createPlan, updatePlan } from "@/services/plan-service";
 import type { Plan } from "@/types/plan";
@@ -47,7 +47,7 @@ export function PlanFormDialog({
     setError,
     formState: { errors, isSubmitting },
   } = useForm<PlanFormData>({
-    resolver: zodResolver(planSchema),
+    resolver: standardSchemaResolver(planSchema),
     defaultValues: {
       name: plan?.name || "",
       price: plan ? Number(plan.price) : 0,
