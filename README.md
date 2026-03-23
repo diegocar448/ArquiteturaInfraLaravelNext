@@ -12,6 +12,74 @@ Este repositorio e um tutorial progressivo. Cada fase documenta exatamente o que
 
 ---
 
+## Arquitetura
+
+```mermaid
+graph TB
+    subgraph CLIENTS["🌐 Clientes"]
+        BROWSER["Browser<br/>(Admin/Cliente)"]
+    end
+
+    subgraph CICD["⚙️ CI/CD - GitHub Actions"]
+        CI["CI Pipeline<br/>Lint + Tests"]
+        E2E["E2E Pipeline<br/>Playwright"]
+        CD["CD Pipeline<br/>Build + Deploy"]
+    end
+
+    subgraph CLOUD["☁️ AWS (Producao)"]
+        ALB["AWS ALB<br/>Load Balancer"]
+
+        subgraph EKS["EKS Cluster (Kubernetes)"]
+            INGRESS["Ingress Controller"]
+
+            subgraph FE_PODS["Frontend Pods (2-6)"]
+                NEXTJS["Next.js 16<br/>SSR + CSR"]
+            end
+
+            subgraph BE_PODS["Backend Pods (2-15)"]
+                LARAVEL["Laravel 13<br/>API REST"]
+            end
+
+            subgraph WORKER_PODS["Worker Pods (1-2)"]
+                WORKER["Queue Worker"]
+            end
+
+            HPA["HPA Auto-scaling"]
+        end
+
+        subgraph DATA["Dados Persistentes"]
+            RDS["RDS PostgreSQL 16<br/>Multi-AZ"]
+            ELASTICACHE["ElastiCache Redis 7"]
+        end
+
+        ECR["ECR<br/>Container Registry"]
+    end
+
+    subgraph MESSAGING["📨 Mensageria"]
+        KAFKA["Apache Kafka 4.2<br/>KRaft"]
+    end
+
+    BROWSER --> ALB
+    ALB --> INGRESS
+    INGRESS -->|"/*"| NEXTJS
+    INGRESS -->|"/api/*"| LARAVEL
+    NEXTJS -->|"SSR calls"| LARAVEL
+    LARAVEL --> RDS
+    LARAVEL --> ELASTICACHE
+    LARAVEL -->|"publish events"| KAFKA
+    KAFKA -->|"consume events"| WORKER
+    WORKER --> RDS
+    HPA --> BE_PODS
+    HPA --> FE_PODS
+    CD -->|"push images"| ECR
+    CD -->|"kubectl apply"| EKS
+    CI -->|"triggers"| CD
+```
+
+> 📐 [Diagramas completos da arquitetura](docs/architecture-diagram.md) — ambiente local, Clean Architecture, CI/CD, Terraform, Kafka e mais.
+
+---
+
 ## Sobre o Projeto
 
 Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescrito) (Laravel 7 + Blade) com arquitetura moderna.
