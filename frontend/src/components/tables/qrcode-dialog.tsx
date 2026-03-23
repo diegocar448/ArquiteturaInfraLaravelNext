@@ -19,24 +19,22 @@ interface QrCodeDialogProps {
 }
 
 export function QrCodeDialog({ table, onOpenChange }: QrCodeDialogProps) {
-  const [data, setData] = useState<TableQrCode | null>(null);
-  const prevTableIdRef = useRef<number | null>(null);
+  const [result, setResult] = useState<{ tableId: number; data: TableQrCode } | null>(null);
+  const fetchingRef = useRef<number | null>(null);
+
+  // Data is only valid when it matches the current table
+  const data = table && result?.tableId === table.id ? result.data : null;
   const loading = !!table && !data;
 
   useEffect(() => {
-    if (!table) {
-      prevTableIdRef.current = null;
-      setData(null);
-      return;
-    }
+    if (!table || table.id === fetchingRef.current) return;
 
-    if (table.id !== prevTableIdRef.current) {
-      prevTableIdRef.current = table.id;
-      setData(null);
-      getTableQrCode(table.id)
-        .then((res) => setData(res.data))
-        .catch((err) => console.error("Erro ao carregar QR Code:", err));
-    }
+    fetchingRef.current = table.id;
+    const tableId = table.id;
+
+    getTableQrCode(tableId)
+      .then((res) => setResult({ tableId, data: res.data }))
+      .catch((err) => console.error("Erro ao carregar QR Code:", err));
   }, [table]);
 
   const handleDownload = () => {
