@@ -125,8 +125,8 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 ### Checklist de Funcionalidades
 
 - [x] Infraestrutura Docker (dev + prod)
-- [ ] Kubernetes manifests + Kustomize (Fase 12)
-- [ ] Terraform modules (Fase 12)
+- [x] Kubernetes manifests + Kustomize (Fase 12)
+- [x] Terraform modules (Fase 12)
 - [x] CI/CD com GitHub Actions
 - [x] Autenticacao JWT (Admin + Client)
 - [x] Multi-tenancy (single-db, tenant_id, Global Scopes)
@@ -138,8 +138,9 @@ Reescrita do [larafood_reescrito](https://github.com/diegocar448/larafood_reescr
 - [x] Autenticacao de Clientes (JWT)
 - [x] Avaliacoes de Pedidos
 - [x] Dashboard com metricas
-- [ ] Observabilidade (Prometheus + Grafana + Loki) (Fase 13)
-- [ ] Landing page publica (SSR)
+- [x] Observabilidade (Prometheus + Grafana + Loki) (Fase 13)
+- [x] Mensageria Kafka (Producer, Consumer, Retry + DLQ) (Fase 14)
+- [x] Landing page publica (SSR)
 - [x] Testes completos (Unit, Integration, E2E)
 - [x] Documentacao API (OpenAPI/Swagger via Scramble)
 
@@ -164,6 +165,7 @@ Cada fase esta documentada em um arquivo separado na pasta `docs/`:
 | [Fase 11](docs/fase-11-cicd.md) | CI/CD GitHub Actions | Workflows CI/E2E/CD, branch protection, badges |
 | [Fase 12](docs/fase-12-kubernetes-terraform.md) | Kubernetes + Terraform | EKS, Kustomize, Terraform modules, GitOps |
 | [Fase 13](docs/fase-13-observabilidade.md) | Observabilidade | Prometheus, Grafana, Loki, logs estruturados, alertas |
+| [Fase 14](docs/fase-14-mensageria-kafka.md) | Mensageria Kafka | Apache Kafka KRaft, Producer, Consumer, Retry + DLQ, eventos de pedidos |
 
 ---
 
